@@ -1,6 +1,6 @@
 /* Service Worker: speichert die App für die Offline-Nutzung.
    Bei jeder neuen Version VERSION hochzählen. */
-var VERSION = 'fuchs-v2';
+var VERSION = 'fuchs-v3';
 var FILES = [
   './', 'index.html', 'css/style.css', 'manifest.webmanifest',
   'js/core.js', 'js/speech.js', 'js/ai.js', 'js/spelling.js', 'js/content.js',
@@ -24,12 +24,13 @@ self.addEventListener('fetch', function (e) {
   var url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== self.location.origin) return;
   e.respondWith(
-    fetch(e.request).then(function (res) {
+    // "no-cache": immer beim Server nachfragen, damit Updates sofort ankommen
+    fetch(e.request, { cache: 'no-cache' }).then(function (res) {
       var copy = res.clone();
       caches.open(VERSION).then(function (c) { c.put(e.request, copy); });
       return res;
     }).catch(function () {
-      return caches.match(e.request).then(function (r) { return r || caches.match('index.html'); });
+      return caches.match(e.request, { ignoreSearch: true }).then(function (r) { return r || caches.match('index.html'); });
     })
   );
 });

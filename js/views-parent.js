@@ -65,7 +65,9 @@ F.views.parentHome = function () {
     '<span class="li-sub">Sichern, Wiederherstellen, Fuchs umbenennen, PIN</span></span><span class="li-arrow">›</span></button>' +
     '<div class="card soft mt small"><b>Lernstand:</b> ' + F.state.tore + ' Tore · ' + F.esc(F.beltFor(F.state.tore).name) + ' · ' +
     (F.state.stats.runden || 0) + ' Runden · ' + F.state.diktate.length + ' Diktate · ' + F.state.checks.length + ' Diktat-Prüfungen · ' +
-    F.state.trainWords.length + ' offene Übungswörter</div>';
+    F.state.trainWords.length + ' offene Übungswörter</div>' +
+    '<p class="center muted small">App-Version ' + F.VERSION + '</p>' +
+    '<div class="center"><button class="btn ghost small" data-action="forceUpdate">🔄 App aktualisieren</button></div>';
 };
 
 /* ---------------- KI ---------------- */
@@ -84,6 +86,7 @@ F.views.parentAI = function () {
     '<input type="password" id="apiKey" value="' + F.esc(s.apiKey) + '" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="AIza…"></label>' +
     '<div class="btn-row"><button class="btn gut" data-action="saveKey">Speichern & testen</button>' +
     '<button class="btn light" data-action="toggleKey">👁️ Anzeigen</button></div>' +
+    '<p class="muted small">App-Version ' + F.VERSION + ' · <button class="btn ghost small" style="margin:0" data-action="forceUpdate">🔄 App aktualisieren</button></p>' +
     '<p id="aiStatus" class="small">' + (s.model ? 'Verwendetes Modell: <b>' + F.esc(s.model) + '</b>' : '') + '</p>' +
     '<details><summary class="small" style="cursor:pointer">Erweitert: Modell selbst wählen</summary>' +
     '<label class="field mt"><span class="small">Modellname (leer = automatisch)</span><input type="text" id="aiModel" value="' + F.esc(s.model) + '" autocapitalize="off" spellcheck="false"></label>' +
@@ -317,4 +320,17 @@ F.actions.resetAll = function () {
     F.state = F.defaultState();
     F.home();
   }
+};
+
+/* Holt die neueste Version vom Server (Offline-Speicher leeren, neu laden). Daten bleiben erhalten. */
+F.actions.forceUpdate = function () {
+  F.toast('Lade neueste Version …');
+  var jobs = [];
+  if (window.caches && caches.keys) jobs.push(caches.keys().then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k); })); }));
+  if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+    jobs.push(navigator.serviceWorker.getRegistrations().then(function (regs) { return Promise.all(regs.map(function (r) { return r.unregister(); })); }));
+  }
+  Promise.all(jobs).catch(function () {}).then(function () {
+    location.replace(location.pathname + '?u=' + Date.now());
+  });
 };

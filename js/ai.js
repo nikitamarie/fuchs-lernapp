@@ -112,7 +112,7 @@ F.ai = {
               return self.FALLBACK.slice();
             });
             return listPromise.then(function (names) {
-              queue = names.filter(function (n) { return tried.indexOf(n) < 0; }).slice(0, 8);
+              queue = names.filter(function (n) { return tried.indexOf(n) < 0; }).slice(0, 10);
               if (!queue.length) throw lastErr || new Error('Kein passendes KI-Modell gefunden.');
               return next();
             });
@@ -122,7 +122,17 @@ F.ai = {
         var model = queue.shift();
         tried.push(model);
         log('⏳ Probiere ' + model + ' …');
-        return self.callModel(model, body).then(function (result) {
+        var attempt = function (n) {
+          return self.callModel(model, body).catch(function (err) {
+            // überlastet → kurz warten und dasselbe Modell noch einmal probieren
+            if (err.status >= 500 && n < 2) {
+              log('… ' + model + ' ist überlastet, warte kurz …');
+              return new Promise(function (res) { setTimeout(res, 2500 * (n + 1)); }).then(function () { return attempt(n + 1); });
+            }
+            throw err;
+          });
+        };
+        return attempt(0).then(function (result) {
           if (s.model !== model) { s.model = model; F.save(); }
           log('✅ ' + model + ' klappt.');
           return result;
