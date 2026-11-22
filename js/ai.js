@@ -53,20 +53,52 @@ F.ai = {
   },
 
   /* eine Anfrage an genau ein Modell */
+  /* Denk-Modus der neueren Modelle möglichst kurz halten – sonst dauert die Antwort
+     bei Fotos sehr lange und ältere iPads brechen die Verbindung ab. */
+  thinkingFor: function (model) {
+    var no = F.state.settings.noThink || {};
+    if (no[model]) return null;
+    if (/gemini-2\.5-flash/.test(model)) return { thinkingBudget: 0 };
+    if (/gemini-(3|4|5|6|7|8|9)/.test(model) || /latest$/.test(model)) return { thinkingLevel: 'low' };
+    return null;
+  },
+
+  /* eine Anfrage an genau ein Modell */
   callModel: function (model, body) {
     var self = this;
-    return fetch(this.base + '/models/' + model + ':generateContent?key=' + this.key(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    }).then(function (r) {
+    var payload = JSON.parse(JSON.stringify(body));
+    var think = this.thinkingFor(model);
+    if (think) payload.generationConfig.thinkingConfig = think;
+
+    var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timedOut = false;
+    var timer = ctrl ? setTimeout(function () { timedOut = true; ctrl.abort(); }, 120000) : null;
+    var opts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
+    if (ctrl) opts.signal = ctrl.signal;
+
+    return fetch(this.base + '/models/' + model + ':generateContent?key=' + this.key(), opts).then(function (r) {
       return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }, function () { return { ok: false, status: r.status, j: null }; });
-    }, function () {
-      var e = new Error('Verbindung zur KI hat nicht geklappt. Ist das WLAN an?');
-      e.network = true;
+    }, function (netErr) {
+      clearTimeout(timer);
+      var e = new Error(timedOut ? 'Die KI hat zu lange gebraucht.' : 'Verbindung zur KI hat nicht geklappt. Ist das WLAN an?');
+      e.network = !timedOut;
+      e.timeout = timedOut;
+      e.detail = String((netErr && (netErr.message || netErr.name)) || '');
       throw e;
     }).then(function (res) {
-      if (!res.ok) throw self.httpError(res.status, res.j);
+      clearTimeout(timer);
+      if (!res.ok) {
+        var msg = JSON.stringify(res.j || '');
+        // Modell kennt die Denk-Einstellung nicht → ohne nochmal probieren
+        if (res.status === 400 && think && /thinking/i.test(msg)) {
+          var s = F.state.settings;
+          s.noThink = s.noThink || {};
+          s.noThink[model] = true;
+          F.save();
+          return self.callModel(model, body);
+        }
+        throw self.httpError(res.status, res.j);
+      }
       var cand = res.j.candidates && res.j.candidates[0];
       var text = '';
       if (cand && cand.content && cand.content.parts) {
@@ -75,6 +107,7 @@ F.ai = {
       if (!text) {
         var e2 = new Error('Die KI konnte mit den Fotos nichts anfangen. Vielleicht nochmal heller oder schärfer fotografieren?');
         e2.empty = true;
+        e2.detail = (cand && cand.finishReason) || (res.j.promptFeedback && res.j.promptFeedback.blockReason) || '';
         throw e2;
       }
       return self.parseJSON(text);
@@ -91,15 +124,17 @@ F.ai = {
     if (!this.hasKey()) return Promise.reject(new Error('Es fehlt noch der KI-Schlüssel. Bitte Mama oder Papa: Eltern-Bereich → KI einrichten.'));
     if (navigator.onLine === false) return Promise.reject(new Error('Kein Internet – für die Foto-Auswertung braucht das Tablet WLAN.'));
 
-    var parts = [{ text: prompt }];
-    (images || []).forEach(function (im) { parts.push({ inline_data: { mime_type: 'image/jpeg', data: im.data } }); });
-    var body = { contents: [{ role: 'user', parts: parts }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json' } };
-
     var tried = [];
     var log = opts.log || function () {};
+    var body = null;
     var getList = (s.model && !opts.fresh) ? Promise.resolve([s.model]) : Promise.resolve([]);
 
-    return getList.then(function (first) {
+    return F.fitImages(images || []).then(function (imgs) {
+      var parts = [{ text: prompt }];
+      imgs.forEach(function (im) { parts.push({ inline_data: { mime_type: 'image/jpeg', data: im.data } }); });
+      body = { contents: [{ role: 'user', parts: parts }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json' } };
+      return getList;
+    }).then(function (first) {
       var listPromise = null;
       var queue = first.slice();
       var lastErr = null;
@@ -128,6 +163,11 @@ F.ai = {
             if (err.status >= 500 && n < 2) {
               log('… ' + model + ' ist überlastet, warte kurz …');
               return new Promise(function (res) { setTimeout(res, 2500 * (n + 1)); }).then(function () { return attempt(n + 1); });
+            }
+            // Verbindung kurz weg → einmal nochmal versuchen
+            if (err.network && n < 1) {
+              log('… Verbindung abgebrochen, versuche es nochmal …');
+              return new Promise(function (res) { setTimeout(res, 2000); }).then(function () { return attempt(n + 1); });
             }
             throw err;
           });

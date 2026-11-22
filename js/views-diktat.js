@@ -66,8 +66,7 @@ F.actions.extractDiktat = function () {
     };
     F.go('diktatEdit', { draft: draft }, { replace: true });
   }).catch(function (e) {
-    F.render();
-    F.toast(e.message, 6000);
+    F.showAiError(e);
   });
 };
 
@@ -394,8 +393,7 @@ F.actions.runCheck = function (el) {
     F.save();
     F.go('diktatResult', { id: c.id }, { replace: true });
   }).catch(function (e) {
-    F.render();
-    F.toast(e.message, 6000);
+    F.showAiError(e);
   });
 };
 

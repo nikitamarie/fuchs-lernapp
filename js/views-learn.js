@@ -90,7 +90,7 @@ F.actions.makeNotes = function () {
     F.save();
     F.toast(karten.length + ' Merkkarten gespeichert! ⭐');
     F.go('notesHome', { fach: fach }, { replace: true });
-  }).catch(function (e) { F.render(); F.toast(e.message, 6000); });
+  }).catch(function (e) { F.showAiError(e); });
 };
 
 /* ---------------- Lernpakete (Übungen aus Fotos, alle Fächer) ---------------- */
@@ -144,7 +144,7 @@ F.actions.makePack = function () {
     });
     F.save();
     F.go('packDetail', { id: pack.id }, { replace: true });
-  }).catch(function (e) { F.render(); F.toast(e.message, 6000); });
+  }).catch(function (e) { F.showAiError(e); });
 };
 
 F.views.packDetail = function (p) {

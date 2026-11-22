@@ -1,7 +1,7 @@
 /* Kern: Speicher, Navigation, Hilfsfunktionen, Belohnungen.
    Bewusst einfaches JavaScript (ohne ?. und ??), damit ältere iPads mitkommen. */
 var F = window.F = {};
-F.VERSION = '3';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
+F.VERSION = '4';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
 
 /* ---------------- Speicher ---------------- */
 F.STORE_KEY = 'fuchsapp_v1';
@@ -281,7 +281,7 @@ F.views.roundDone = function (p) {
 /* Liest Bild-Dateien, verkleinert sie (spart Daten und KI-Kontingent) und gibt
    [{data: base64 ohne Präfix, url: dataURL}] zurück. */
 F.readImages = function (fileList, maxSide) {
-  maxSide = maxSide || 1600;
+  maxSide = maxSide || 1400;
   var files = Array.prototype.slice.call(fileList || []);
   return Promise.all(files.map(function (file) {
     return new Promise(function (resolve, reject) {
@@ -298,7 +298,8 @@ F.readImages = function (fileList, maxSide) {
           var ctx = c.getContext('2d');
           ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
           ctx.drawImage(img, 0, 0, c.width, c.height);
-          var url = c.toDataURL('image/jpeg', 0.85);
+          var url = c.toDataURL('image/jpeg', 0.75);
+          if (url.length < 2000) { reject(new Error('Das Foto konnte nicht verarbeitet werden. Bitte nochmal fotografieren.')); return; }
           resolve({ url: url, data: url.split(',')[1] });
         };
         img.src = reader.result;
@@ -308,12 +309,55 @@ F.readImages = function (fileList, maxSide) {
   }));
 };
 
+/* Alle Fotos zusammen klein genug halten (ältere iPads/WLAN brechen große Uploads gern ab) */
+F.shrinkImage = function (im, maxSide, q) {
+  return new Promise(function (resolve) {
+    var img = new Image();
+    img.onerror = function () { resolve(im); };
+    img.onload = function () {
+      var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+      var scale = Math.min(1, maxSide / Math.max(w, h));
+      var c = document.createElement('canvas');
+      c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+      var ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      var url = c.toDataURL('image/jpeg', q);
+      resolve(url.length > 2000 ? { url: url, data: url.split(',')[1] } : im);
+    };
+    img.src = im.url;
+  });
+};
+F.fitImages = function (imgs) {
+  var total = function (list) { return list.reduce(function (n, im) { return n + im.data.length; }, 0); };
+  if (!imgs.length || total(imgs) < 2500000) return Promise.resolve(imgs);
+  var side = imgs.length > 3 ? 1000 : 1200;
+  return Promise.all(imgs.map(function (im) { return F.shrinkImage(im, side, 0.65); }));
+};
+
+/* Fehler der KI auf der Foto-Seite sichtbar anzeigen (statt nur kurz als Meldung) */
+F.lastAiError = null;
+F.showAiError = function (e) {
+  F.lastAiError = e;
+  F.render();
+  window.scrollTo(0, 0);
+};
+F.aiErrorHtml = function () {
+  var e = F.lastAiError;
+  if (!e) return '';
+  F.lastAiError = null;
+  return '<div class="card hinweis"><p><b>😕 ' + F.esc(e.message) + '</b></p>' +
+    (e.timeout ? '<p>Tipp: Weniger Fotos auf einmal hochladen (z. B. eine Seite nach der anderen) und die App währenddessen offen lassen.</p>' : '') +
+    (e.network ? '<p>Tipp: Bitte die App beim Warten offen lassen und den Bildschirm nicht sperren. Dann einfach nochmal auf den Knopf tippen.</p>' : '') +
+    '<p class="small muted">Für Eltern: ' + F.esc([e.status || '', e.detail || '', F.state.settings.model || ''].join(' ').trim()) + ' · Version ' + F.VERSION + '</p></div>';
+};
+
 /* Wiederverwendbarer Foto-Baustein: Knopf + Vorschau. Fotos landen in F.pendingImages[key]. */
 F.pendingImages = {};
 F.photoPicker = function (key, label) {
   var imgs = F.pendingImages[key] || [];
-  var thumbs = imgs.map(function (im) { return '<img src="' + im.url + '" alt="Foto">'; }).join('');
-  return '<div class="thumbs" id="thumbs-' + key + '">' + thumbs + '</div>' +
+ var thumbs = imgs.map(function (im) { return '<img src="' + im.url + '" alt="Foto">'; }).join('');
+  return F.aiErrorHtml() + '<div class="thumbs" id="thumbs-' + key + '">' + thumbs + '</div>' +
     '<div class="btn-row">' +
     '<label class="btn big fuchs file-btn">📷 ' + F.esc(label || 'Foto machen oder auswählen') +
     '<input type="file" accept="image/*" multiple data-photo-key="' + key + '"></label>' +
@@ -340,10 +384,18 @@ F.actions.clearPhotos = function (el) {
 
 /* Lade-Bildschirm während die KI arbeitet */
 F.loadingHtml = function (title, text) {
+  var start = Date.now();
+  clearInterval(F._loadTimer);
+  F._loadTimer = setInterval(function () {
+    var el = document.getElementById('loadSec');
+    if (!el) { clearInterval(F._loadTimer); return; }
+    el.textContent = Math.round((Date.now() - start) / 1000);
+  }, 1000);
   return F.topbar(title, { noBack: true, home: false }) +
     '<div class="card center"><div class="big-emoji" style="font-size:4rem">🦊</div>' +
     '<div class="spinner"></div><h2>' + F.esc(text || (F.fox() + ' schaut sich die Fotos an …')) + '</h2>' +
-    '<p class="muted">Das kann bis zu einer Minute dauern.</p></div>';
+    '<p class="muted">Das kann bis zu einer Minute dauern (<span id="loadSec">0</span> s).<br>' +
+    '<b>Bitte die App offen lassen und den Bildschirm nicht sperren.</b></p></div>';
 };
 
 /* "Gelber Gürtel" → "zum Gelben Gürtel" */
