@@ -1,0 +1,17 @@
+{
+  "name": "Fuchs-Lernapp",
+  "short_name": "Fuchs-Lernen",
+  "description": "Lern-App für die Fuchsklasse: Diktate, Mathe und mehr.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f8f5fd",
+  "theme_color": "#5b3696",
+  "lang": "de",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

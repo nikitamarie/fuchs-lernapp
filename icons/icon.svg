@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#5b3696"/>
+  <circle cx="256" cy="276" r="190" fill="#7048b0"/>
+  <!-- Ohren -->
+  <path d="M120 120 L205 210 L140 260 Z" fill="#e9782f"/>
+  <path d="M392 120 L307 210 L372 260 Z" fill="#e9782f"/>
+  <path d="M142 160 L190 212 L154 238 Z" fill="#2e1850" opacity="0.55"/>
+  <path d="M370 160 L322 212 L358 238 Z" fill="#2e1850" opacity="0.55"/>
+  <!-- Kopf -->
+  <path d="M256 420 L120 250 Q130 180 256 175 Q382 180 392 250 Z" fill="#e9782f"/>
+  <!-- weiße Wangen -->
+  <path d="M256 420 L150 290 Q200 300 256 330 Q312 300 362 290 Z" fill="#ffffff"/>
+  <!-- Augen -->
+  <circle cx="205" cy="265" r="17" fill="#2e1850"/>
+  <circle cx="307" cy="265" r="17" fill="#2e1850"/>
+  <circle cx="211" cy="259" r="6" fill="#fff"/>
+  <circle cx="313" cy="259" r="6" fill="#fff"/>
+  <!-- Nase -->
+  <circle cx="256" cy="405" r="20" fill="#2e1850"/>
+</svg>
