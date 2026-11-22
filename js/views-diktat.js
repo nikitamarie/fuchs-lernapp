@@ -188,8 +188,13 @@ F.views.diktatSetup = function (p) {
     (hasText ? '<div class="switch-row"><span>Satzzeichen ansagen („Komma“, „Punkt“)</span><input type="checkbox" id="dpPunct" ' + (s.speakPunct ? 'checked' : '') + '></div>' : '') +
     '<div class="switch-row"><span>Geschriebenes Stück auf dem Bildschirm zeigen</span><input type="checkbox" id="dpShow" ' + (s.showText ? 'checked' : '') + '></div>' +
     '<button class="btn big block fuchs mt" data-action="startDiktat" data-id="' + d.id + '">Los geht’s! 🔊</button>' +
-    '<button class="btn small light" data-action="testVoice">Stimme testen</button>' +
+    '<button class="btn small light" data-action="testVoice">🔊 Ton testen</button>' +
     '</div>' +
+    '<div class="card soft small"><b>Hörst du nichts?</b><ol class="steps" style="margin:6px 0 0">' +
+    '<li>Lautstärke-Taste am iPad nach oben drücken.</li>' +
+    '<li>Stumm-Schalter an der Seite (falls vorhanden) bzw. die Glocke im Kontrollzentrum ausschalten.</li>' +
+    '<li>Bluetooth-Kopfhörer verbunden? Dann kommt der Ton dort.</li>' +
+    '<li>Immer noch still? <button class="btn small fuchs" style="margin:6px 0 0" data-action="useOnlineVoice">Online-Stimme benutzen</button></li></ol></div>' +
     (!F.speech.supported ? '<div class="card hinweis">Dieses Gerät kann leider nicht vorlesen.</div>' : '');
 };
 F.actions.chipPick = function (el) {
@@ -202,6 +207,12 @@ F.actions.chipPick = function (el) {
 };
 F.actions.testVoice = function () {
   F.speech.speak('Hallo! Ich bin ' + F.fox() + '. So schnell lese ich vor.');
+};
+F.actions.useOnlineVoice = function () {
+  F.state.settings.ttsMode = 'online';
+  F.save();
+  F.speech.speak('Hallo! Jetzt lese ich mit der Online-Stimme vor.');
+  F.toast('Online-Stimme ist an (braucht WLAN). Ändern: Eltern-Bereich → Stimme.', 4500);
 };
 
 F.actions.startDiktat = function (el) {
@@ -309,7 +320,7 @@ F.views.diktatPlay = function () {
     '<button class="btn big block gut" data-action="dpNext">' + nextLabel + '</button>' +
     (dp.phase === 'teil' || dp.phase === 'nochmal' ? '<button class="btn small light" data-action="dpWhole">Ganzen Satz nochmal hören</button>' : '') +
     '</div>';
-  setTimeout(F.dpSpeak, 450);
+  F.afterRender = F.dpSpeak;
   return html;
 };
 

@@ -87,7 +87,7 @@ F.views.trainPlay = function () {
     }
   }
   html += '</div>';
-  if (!(q.typ === 'papier' && tr.revealed)) setTimeout(function () { F.speech.speak(q.w.wort); }, 400);
+  if (!(q.typ === 'papier' && tr.revealed)) F.afterRender = function () { F.speech.speak(q.w.wort); };
   if (q.typ === 'tippen') setTimeout(function () { var i = F.$('#trInput'); if (i) i.focus(); }, 500);
   return html;
 };

@@ -1,7 +1,7 @@
 /* Kern: Speicher, Navigation, Hilfsfunktionen, Belohnungen.
    Bewusst einfaches JavaScript (ohne ?. und ??), damit ältere iPads mitkommen. */
 var F = window.F = {};
-F.VERSION = '4';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
+F.VERSION = '5';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
 
 /* ---------------- Speicher ---------------- */
 F.STORE_KEY = 'fuchsapp_v1';
@@ -145,8 +145,13 @@ F.render = function () {
   var v = F.views[F.current.name];
   var app = document.getElementById('app');
   if (!v) { app.innerHTML = '<p>Seite nicht gefunden.</p>'; return; }
+  F.afterRender = null;
   var out = v(F.current.params);
   if (typeof out === 'string') app.innerHTML = out;
+  // z. B. automatisches Vorlesen – direkt im selben Antippen, sonst bleibt iOS stumm
+  var after = F.afterRender;
+  F.afterRender = null;
+  if (after) after();
 };
 
 /* Kopfzeile mit Zurück-Knopf */

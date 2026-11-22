@@ -237,6 +237,16 @@ F.views.parentVoice = function () {
     '<label class="field"><span>Tempo: <b id="rateVal">' + s.rate + '</b></span><input type="range" id="rate" min="0.5" max="1.2" step="0.05" value="' + s.rate + '" style="width:100%"></label>' +
     '<button class="btn light" data-action="voiceTest">🔊 Probehören</button> <button class="btn gut" data-action="voiceSave">Speichern</button>' +
     '</div>' +
+    '<div class="card"><h3>Welche Stimme?</h3><div class="chips" id="ttsMode">' +
+    [['auto', '🦊 Automatisch'], ['geraet', '📱 Nur iPad-Stimme'], ['online', '🌐 Online-Stimme']].map(function (m) {
+      return '<button class="chip ' + (F.speech.mode() === m[0] ? 'on' : '') + '" data-action="setTtsMode" data-val="' + m[0] + '">' + m[1] + '</button>';
+    }).join('') + '</div>' +
+    '<p class="small muted">Automatisch: erst die iPad-Stimme (offline); bleibt sie stumm, wird die Online-Stimme genommen (braucht WLAN).</p>' +
+    '<p class="small"><b>Gerade aktiv:</b> ' + (F.speech.useOnline() ? '🌐 Online-Stimme' : '📱 iPad-Stimme') +
+    ' · Stimmen auf dem Gerät: ' + F.speech.voices.length + ' (deutsch: ' + voices.length + ')' +
+    (F.speech.status ? ' · ' + F.esc(F.speech.status) : '') + '</p>' +
+    (F.state.settings.ttsDeviceFailed || F.state.settings.ttsNoVoiceSel ? '<button class="btn small light" data-action="retryDeviceVoice">iPad-Stimme nochmal versuchen</button>' : '') +
+    '</div>' +
     '<div class="card"><div class="switch-row"><span>Beim Diktat das Stück anzeigen</span><input type="checkbox" id="optShow" ' + (s.showText ? 'checked' : '') + '></div>' +
     '<div class="switch-row"><span>Satzzeichen ansagen</span><input type="checkbox" id="optPunct" ' + (s.speakPunct ? 'checked' : '') + '></div></div>' +
     '<p class="muted small">Tipp fürs iPad: Unter Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen → Deutsch gibt es schönere „Erweitert“-Stimmen zum Laden (kostenlos).</p>';
@@ -244,6 +254,7 @@ F.views.parentVoice = function () {
 F.actions.voiceTest = function () {
   F.actions.voiceSave(true);
   F.speech.speak('Der Fuchs läuft schnell über die Wiese. Im Herbst fallen die bunten Blätter.');
+  setTimeout(function () { if (F.current.name === 'parentVoice') F.render(); }, 4000);
 };
 F.actions.voiceSave = function (silent) {
   var s = F.state.settings;
@@ -333,4 +344,18 @@ F.actions.forceUpdate = function () {
   Promise.all(jobs).catch(function () {}).then(function () {
     location.replace(location.pathname + '?u=' + Date.now());
   });
+};
+
+F.actions.setTtsMode = function (el) {
+  F.state.settings.ttsMode = el.getAttribute('data-val');
+  F.save();
+  F.render();
+  F.speech.speak('So klinge ich jetzt.');
+};
+F.actions.retryDeviceVoice = function () {
+  F.state.settings.ttsDeviceFailed = false;
+  F.state.settings.ttsNoVoiceSel = false;
+  F.save();
+  F.speech.speak('Hallo, hier ist die iPad-Stimme.');
+  setTimeout(function () { if (F.current.name === 'parentVoice') F.render(); }, 3500);
 };
