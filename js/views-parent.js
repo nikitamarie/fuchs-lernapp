@@ -229,6 +229,8 @@ F.views.parentVoice = function () {
   var voices = F.speech.germanVoices();
   var cur = F.speech.voice ? F.speech.voice.name : '';
   return F.topbar('Stimme & Vorlesen', { home: true }) +
+    '<button class="list-item" data-action="go" data-view="soundTest" style="border:3px solid #e9782f"><span class="li-emoji">🩺</span>' +
+    '<span class="li-main"><span class="li-title">Ton-Test</span><span class="li-sub">Wenn gar nichts zu hören ist – findet die Ursache</span></span><span class="li-arrow">›</span></button>' +
     '<div class="card">' +
     (voices.length ? '<label class="field"><span>Stimme</span><select id="voiceSel">' + voices.map(function (v) {
       return '<option value="' + F.esc(v.name) + '" ' + (v.name === cur ? 'selected' : '') + '>' + F.esc(v.name + ' (' + v.lang + ')') + '</option>';
@@ -358,4 +360,83 @@ F.actions.retryDeviceVoice = function () {
   F.save();
   F.speech.speak('Hallo, hier ist die iPad-Stimme.');
   setTimeout(function () { if (F.current.name === 'parentVoice') F.render(); }, 3500);
+};
+
+/* ---------------- Ton-Test (Diagnose) ---------------- */
+F.beepUrl = function () {
+  if (F._beep) return F._beep;
+  var rate = 8000, n = rate * 0.6, buf = new Uint8Array(44 + n);
+  var w = function (o, str) { for (var i = 0; i < str.length; i++) buf[o + i] = str.charCodeAt(i); };
+  var dv = new DataView(buf.buffer);
+  w(0, 'RIFF'); dv.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt ');
+  dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+  dv.setUint32(24, rate, true); dv.setUint32(28, rate, true); dv.setUint16(32, 1, true); dv.setUint16(34, 8, true);
+  w(36, 'data'); dv.setUint32(40, n, true);
+  for (var i = 0; i < n; i++) buf[44 + i] = 128 + Math.round(90 * Math.sin(2 * Math.PI * 660 * i / rate) * Math.min(1, (n - i) / 800));
+  var bin = ''; for (var j = 0; j < buf.length; j++) bin += String.fromCharCode(buf[j]);
+  F._beep = 'data:audio/wav;base64,' + btoa(bin);
+  return F._beep;
+};
+F.soundResults = F.soundResults || {};
+F.views.soundTest = function () {
+  var r = F.soundResults;
+  var row = function (id, nr, title, desc) {
+    var res = r[id];
+    return '<div class="card"><h3>' + nr + '. ' + title + '</h3><p class="small muted">' + desc + '</p>' +
+      '<button class="btn" data-action="sndTest" data-t="' + id + '">▶️ Test starten</button>' +
+      (res ? '<p class="small" style="margin-top:8px"><b>Technik:</b> ' + F.esc(res) + '</p>' +
+        '<div class="btn-row"><button class="btn small gut" data-action="sndHeard" data-t="' + id + '" data-v="ja">Ich habe es gehört ✓</button>' +
+        '<button class="btn small light" data-action="sndHeard" data-t="' + id + '" data-v="nein">Nichts gehört ✗</button></div>' : '') +
+      (r[id + '_heard'] ? '<p><b>' + (r[id + '_heard'] === 'ja' ? '✅ gehört' : '❌ nicht gehört') + '</b></p>' : '') +
+      '</div>';
+  };
+  var v = F.speech.voices;
+  var info = 'Version ' + F.VERSION + ' · ' + navigator.userAgent.replace(/^Mozilla\/5\.0 /, '').slice(0, 120) +
+    ' · Home-Bildschirm-App: ' + ((window.navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)) ? 'ja' : 'nein') +
+    ' · Sprachausgabe vorhanden: ' + (F.speech.supported ? 'ja' : 'nein') +
+    ' · Stimmen: ' + v.length + ' (deutsch: ' + F.speech.germanVoices().length + ')' +
+    ' · Modus: ' + F.speech.mode() + (F.state.settings.ttsDeviceFailed ? ' (iPad-Stimme als stumm erkannt)' : '');
+  return F.topbar('Ton-Test', { home: true }) +
+    '<p>Mach die Tests nacheinander und tippe danach an, ob du etwas gehört hast. Danach bitte ein <b>Bildschirmfoto</b> von dieser Seite machen.</p>' +
+    row('beep', 1, 'Piepton', 'Prüft, ob das iPad in dieser App überhaupt Töne abspielt.') +
+    row('device', 2, 'iPad-Stimme', 'Die eingebaute deutsche Stimme (geht ohne Internet).') +
+    row('online', 3, 'Online-Stimme', 'Die Ersatz-Stimme aus dem Internet.') +
+    '<div class="card soft small"><b>Geräte-Infos:</b> ' + F.esc(info) + '</div>';
+};
+F.actions.sndHeard = function (el) {
+  F.soundResults[el.getAttribute('data-t') + '_heard'] = el.getAttribute('data-v');
+  F.render();
+};
+F.actions.sndTest = function (el) {
+  var t = el.getAttribute('data-t');
+  var r = F.soundResults;
+  var done = function (msg) { r[t] = msg; if (F.current.name === 'soundTest') F.render(); };
+  F.speech.stop();
+  if (t === 'beep' || t === 'online') {
+    var a = F.speech.audio || new Audio();
+    var src = t === 'beep' ? F.beepUrl() : 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=de&q=' + encodeURIComponent('Hallo, das ist die Online-Stimme.');
+    var started = false;
+    a.onplaying = function () { started = true; };
+    a.onerror = function () { var c = a.error ? a.error.code : '?'; done('Fehler beim Abspielen (Code ' + c + (c === 2 ? ' = Netzwerk' : c === 4 ? ' = Quelle nicht erlaubt/erreichbar' : '') + ')'); };
+    a.onended = function () { done('abgespielt bis zum Ende (Lautstärke ' + Math.round((a.volume || 0) * 100) + ' %, stumm: ' + (a.muted ? 'ja' : 'nein') + ')'); };
+    a.src = src;
+    try { a.playbackRate = 1; } catch (e) {}
+    var pr;
+    try { pr = a.play(); } catch (e) { done('play() Fehler: ' + e.name); return; }
+    if (pr && pr.then) pr.then(function () { setTimeout(function () { if (!r[t]) done(started ? 'spielt …' : 'gestartet, aber noch kein Ton'); }, 2500); },
+      function (err) { done('vom iPad blockiert: ' + ((err && err.name) || '') + ' ' + ((err && err.message) || '')); });
+    return;
+  }
+  // iPad-Stimme direkt testen (ohne Ersatz-Logik)
+  if (!F.speech.supported) { done('Diese Safari-Version hat keine Sprachausgabe.'); return; }
+  var synth = window.speechSynthesis;
+  var u = new SpeechSynthesisUtterance('Hallo, das ist die iPad-Stimme.');
+  u.lang = 'de-DE';
+  var st = false;
+  u.onstart = function () { st = true; };
+  u.onend = function () { done('fertig gesprochen (Start gemeldet: ' + (st ? 'ja' : 'nein') + ')'); };
+  u.onerror = function (ev) { done('Fehler: ' + ((ev && ev.error) || '?')); };
+  F.speech._u = u;
+  try { if (synth.paused) synth.resume(); synth.speak(u); } catch (e) { done('speak() Fehler: ' + e.name); return; }
+  setTimeout(function () { if (!r[t]) done('nach 4 s: spricht=' + synth.speaking + ', wartet=' + synth.pending + ', Start gemeldet=' + (st ? 'ja' : 'nein')); }, 4000);
 };
