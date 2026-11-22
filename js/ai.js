@@ -4,93 +4,140 @@ F.ai = {
   base: 'https://generativelanguage.googleapis.com/v1beta',
 
   hasKey: function () { return !!(F.state.settings.apiKey || '').trim(); },
+  key: function () { return encodeURIComponent((F.state.settings.apiKey || '').trim()); },
 
-  /* sucht automatisch ein aktuelles, kostenloses "Flash"-Modell aus */
-  pickModel: function (force) {
-    var s = F.state.settings;
-    if (s.model && !force) return Promise.resolve(s.model);
-    var url = this.base + '/models?pageSize=200&key=' + encodeURIComponent(s.apiKey.trim());
-    return fetch(url).then(function (r) {
-      return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; });
+  /* Reserve-Liste, falls die Modell-Liste nicht geladen werden kann */
+  FALLBACK: ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'],
+
+  /* Holt alle "Flash"-Modelle, die dieser Schlüssel nutzen darf, sortiert nach Eignung */
+  listCandidates: function () {
+    var self = this;
+    return fetch(this.base + '/models?pageSize=200&key=' + this.key()).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }, function () { return { ok: false, status: r.status, j: null }; });
     }).then(function (res) {
-      if (!res.ok) throw F.ai.httpError(res.status, res.j);
-      var models = (res.j.models || []).filter(function (m) {
+      if (!res.ok) throw self.httpError(res.status, res.j);
+      var names = (res.j.models || []).filter(function (m) {
         var n = m.name || '';
         var methods = m.supportedGenerationMethods || [];
-        return methods.indexOf('generateContent') >= 0 && /flash/i.test(n) &&
-          !/lite|image|tts|live|audio|embed|exp|thinking|8b|native/i.test(n);
-      });
-      var score = function (m) {
-        var n = m.name;
+        return methods.indexOf('generateContent') >= 0 && /gemini/i.test(n) && /flash/i.test(n) &&
+          !/image|tts|live|audio|embed|native|8b|computer|robotics|veo|omni/i.test(n);
+      }).map(function (m) { return m.name.replace(/^models\//, ''); });
+      var score = function (n) {
         var v = n.match(/gemini-(\d+(?:\.\d+)?)/);
         var num = v ? parseFloat(v[1]) : 0;
-        if (/flash-latest$/.test(n)) return 100;      // Alias, zeigt immer auf das aktuelle stabile Modell
-        if (/latest/.test(n)) num += 0.05;
-        if (/preview/.test(n)) num -= 10;             // Vorschau-Modelle nur, wenn nichts anderes da ist
+        if (/^gemini-flash-latest$/.test(n)) num = 50;
+        if (/^gemini-flash-lite-latest$/.test(n)) num = 49;
+        if (/lite/.test(n)) num -= 0.4;          // "lite" ist etwas schwächer, aber sparsam
+        if (/preview|exp/.test(n)) num -= 20;    // Vorschau-Modelle nur als letzte Wahl
+        if (/-\d{3}$/.test(n)) num -= 0.05;      // feste Versionsnummern nach den Hauptnamen
         return num;
       };
-      models.sort(function (a, b) { return score(b) - score(a); });
-      var name = models.length ? models[0].name.replace(/^models\//, '') : 'gemini-2.5-flash';
-      s.model = name;
-      F.save();
-      return name;
+      names.sort(function (a, b) { return score(b) - score(a); });
+      if (!names.length) names = self.FALLBACK.slice();
+      return names;
     });
   },
 
   httpError: function (status, body) {
     var msg = (body && body.error && body.error.message) || '';
     var e;
-    if (status === 400 && /api key/i.test(msg)) e = new Error('Der KI-Schlüssel stimmt nicht. Bitte im Eltern-Bereich prüfen.');
-    else if (status === 403) e = new Error('Der KI-Schlüssel hat keinen Zugriff. Bitte im Eltern-Bereich prüfen.');
-    else if (status === 429) e = new Error('Die kostenlose KI braucht gerade eine Pause (Tageslimit oder zu viele Anfragen). Bitte in ein paar Minuten nochmal versuchen – oder morgen.');
+    if (status === 400 && /api key/i.test(msg)) e = new Error('Der KI-Schlüssel stimmt nicht. Bitte im Eltern-Bereich prüfen (ganz kopiert, ohne Leerzeichen?).');
+    else if (status === 403) e = new Error('Der KI-Schlüssel hat keinen Zugriff. Bitte im Eltern-Bereich einen neuen Schlüssel erstellen.');
+    else if (status === 429) e = new Error('Die kostenlose KI braucht gerade eine Pause (zu viele Anfragen oder Tageslimit erreicht). Bitte in ein paar Minuten nochmal versuchen – oder morgen.');
     else if (status >= 500) e = new Error('Die KI ist gerade überlastet. Bitte gleich nochmal versuchen.');
     else e = new Error('Die KI hat nicht geantwortet (' + status + '). ' + msg);
     e.status = status;
+    e.detail = msg;
+    e.badKey = (status === 400 && /api key/i.test(msg)) || status === 403;
     return e;
   },
 
-  /* schickt Text + Bilder an die KI und erwartet eine JSON-Antwort */
-  generateJSON: function (prompt, images, _retried) {
+  /* eine Anfrage an genau ein Modell */
+  callModel: function (model, body) {
     var self = this;
-    if (!this.hasKey()) return Promise.reject(new Error('Es fehlt noch der KI-Schlüssel. Bitte Mama oder Papa: Eltern-Bereich → KI einrichten.'));
-    if (!navigator.onLine) return Promise.reject(new Error('Kein Internet – für die Foto-Auswertung braucht das Tablet WLAN.'));
-    return this.pickModel().then(function (model) {
-      var parts = [{ text: prompt }];
-      (images || []).forEach(function (im) {
-        parts.push({ inline_data: { mime_type: 'image/jpeg', data: im.data } });
-      });
-      var body = {
-        contents: [{ role: 'user', parts: parts }],
-        generationConfig: { temperature: 0.2, responseMimeType: 'application/json' }
-      };
-      var url = self.base + '/models/' + model + ':generateContent?key=' + encodeURIComponent(F.state.settings.apiKey.trim());
-      return fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      }).then(function (r) {
-        return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }, function () { return { ok: false, status: r.status, j: null }; });
-      });
+    return fetch(this.base + '/models/' + model + ':generateContent?key=' + this.key(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }, function () { return { ok: false, status: r.status, j: null }; });
+    }, function () {
+      var e = new Error('Verbindung zur KI hat nicht geklappt. Ist das WLAN an?');
+      e.network = true;
+      throw e;
     }).then(function (res) {
-      if (!res.ok) {
-        // Modell nicht (mehr) verfügbar → einmal neu aussuchen
-        if ((res.status === 404 || (res.status === 400 && /model/i.test(JSON.stringify(res.j || '')))) && !_retried) {
-          F.state.settings.model = '';
-          return self.generateJSON(prompt, images, true);
-        }
-        throw self.httpError(res.status, res.j);
-      }
+      if (!res.ok) throw self.httpError(res.status, res.j);
       var cand = res.j.candidates && res.j.candidates[0];
       var text = '';
       if (cand && cand.content && cand.content.parts) {
         cand.content.parts.forEach(function (p) { if (p.text && !p.thought) text += p.text; });
       }
-      if (!text) throw new Error('Die KI konnte mit den Fotos nichts anfangen. Vielleicht nochmal heller oder schärfer fotografieren?');
+      if (!text) {
+        var e2 = new Error('Die KI konnte mit den Fotos nichts anfangen. Vielleicht nochmal heller oder schärfer fotografieren?');
+        e2.empty = true;
+        throw e2;
+      }
       return self.parseJSON(text);
-    }, function (err) {
-      if (err && err.status) throw err;
-      if (err && /Schlüssel|KI/.test(err.message || '')) throw err;
-      throw new Error('Verbindung zur KI hat nicht geklappt. Ist das WLAN an?');
+    });
+  },
+
+  /* schickt Text + Bilder an die KI und erwartet eine JSON-Antwort.
+     Klappt ein Modell nicht (Kontingent leer, überlastet, nicht verfügbar),
+     wird automatisch das nächste kostenlose Modell probiert. */
+  generateJSON: function (prompt, images, opts) {
+    opts = opts || {};
+    var self = this;
+    var s = F.state.settings;
+    if (!this.hasKey()) return Promise.reject(new Error('Es fehlt noch der KI-Schlüssel. Bitte Mama oder Papa: Eltern-Bereich → KI einrichten.'));
+    if (navigator.onLine === false) return Promise.reject(new Error('Kein Internet – für die Foto-Auswertung braucht das Tablet WLAN.'));
+
+    var parts = [{ text: prompt }];
+    (images || []).forEach(function (im) { parts.push({ inline_data: { mime_type: 'image/jpeg', data: im.data } }); });
+    var body = { contents: [{ role: 'user', parts: parts }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json' } };
+
+    var tried = [];
+    var log = opts.log || function () {};
+    var getList = (s.model && !opts.fresh) ? Promise.resolve([s.model]) : Promise.resolve([]);
+
+    return getList.then(function (first) {
+      var listPromise = null;
+      var queue = first.slice();
+      var lastErr = null;
+
+      var next = function () {
+        if (!queue.length) {
+          if (!listPromise) {
+            listPromise = self.listCandidates().catch(function (e) {
+              if (e && e.badKey) throw e;
+              return self.FALLBACK.slice();
+            });
+            return listPromise.then(function (names) {
+              queue = names.filter(function (n) { return tried.indexOf(n) < 0; }).slice(0, 8);
+              if (!queue.length) throw lastErr || new Error('Kein passendes KI-Modell gefunden.');
+              return next();
+            });
+          }
+          throw lastErr || new Error('Kein passendes KI-Modell gefunden.');
+        }
+        var model = queue.shift();
+        tried.push(model);
+        log('⏳ Probiere ' + model + ' …');
+        return self.callModel(model, body).then(function (result) {
+          if (s.model !== model) { s.model = model; F.save(); }
+          log('✅ ' + model + ' klappt.');
+          return result;
+        }, function (err) {
+          // Diese Fehler lassen sich mit einem anderen Modell nicht lösen
+          if (err.badKey || err.network || err.empty) throw err;
+          log('⚠️ ' + model + ': ' + (err.status || '') + ' ' + String(err.detail || err.message).slice(0, 140));
+          // vorher gespeichertes Modell geht nicht mehr → vergessen
+          if (s.model === model) { s.model = ''; F.save(); }
+          // 429 heißt bei einem echten Ratenlimit oft "kurz warten" – trotzdem erst andere Modelle probieren
+          if (!lastErr || lastErr.status !== 429) lastErr = err;
+          return new Promise(function (res) { setTimeout(res, 500); }).then(next);
+        });
+      };
+      return next();
     });
   },
 
@@ -99,17 +146,17 @@ F.ai = {
     try { return JSON.parse(t); } catch (e) {
       var a = t.indexOf('{'), b = t.lastIndexOf('}');
       if (a >= 0 && b > a) { try { return JSON.parse(t.slice(a, b + 1)); } catch (e2) {} }
-      throw new Error('Die Antwort der KI war durcheinander. Bitte nochmal versuchen.');
+      var e3 = new Error('Die Antwort der KI war durcheinander. Bitte nochmal versuchen.');
+      e3.empty = true;
+      throw e3;
     }
   },
 
-  /* Schlüssel testen (Eltern-Bereich) */
-  test: function () {
-    return this.pickModel(true).then(function (m) {
-      return F.ai.generateJSON('Antworte nur mit JSON: {"ok": true, "gruss": "kurzer Gruß für ein Kind, max 6 Wörter"}', []).then(function (j) {
-        return { model: m, gruss: j.gruss || 'Hallo!' };
-      });
-    });
+  /* Schlüssel testen (Eltern-Bereich): probiert alle Modelle von vorn durch */
+  test: function (log) {
+    F.state.settings.model = '';
+    return this.generateJSON('Antworte nur mit JSON: {"ok": true, "gruss": "kurzer Gruß für ein Kind, max 6 Wörter"}', [], { fresh: true, log: log })
+      .then(function (j) { return { model: F.state.settings.model, gruss: j.gruss || 'Hallo!' }; });
   }
 };
 

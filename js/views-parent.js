@@ -92,16 +92,21 @@ F.views.parentAI = function () {
 F.actions.toggleKey = function () { var i = F.$('#apiKey'); i.type = i.type === 'password' ? 'text' : 'password'; };
 F.actions.saveKey = function () {
   var s = F.state.settings;
-  s.apiKey = F.$('#apiKey').value.trim();
+  s.apiKey = F.$('#apiKey').value.replace(/\s+/g, '');
   s.model = '';
   F.save();
   var st = F.$('#aiStatus');
   if (!s.apiKey) { st.textContent = 'Schlüssel gelöscht.'; return; }
-  st.innerHTML = '⏳ Teste die Verbindung …';
-  F.ai.test().then(function (r) {
-    st.innerHTML = '✅ Klappt! Modell: <b>' + F.esc(r.model) + '</b> · Die KI sagt: „' + F.esc(r.gruss) + '“';
+  var lines = [];
+  var log = function (t) { lines.push(F.esc(t)); st.innerHTML = lines.join('<br>'); };
+  log('⏳ Teste die Verbindung …');
+  F.ai.test(log).then(function (r) {
+    log('');
+    log('🎉 Fertig eingerichtet! Modell: ' + r.model + ' · Die KI sagt: „' + r.gruss + '“');
   }).catch(function (e) {
-    st.innerHTML = '❌ ' + F.esc(e.message);
+    log('');
+    log('❌ ' + e.message);
+    log('Wenn das so bleibt: Mach bitte ein Bildschirmfoto von diesem Text und schick es mir.');
   });
 };
 F.actions.saveModel = function () {
