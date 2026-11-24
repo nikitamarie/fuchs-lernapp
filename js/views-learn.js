@@ -14,6 +14,9 @@ F.actions.filterSubject = function (el) {
     F.render();
   } else {
     F.$$('#' + g + ' .chip').forEach(function (c) { c.className = 'chip' + (c === el ? ' on' : ''); });
+    // merken, damit die Auswahl nach einem Foto nicht zurückspringt
+    F.current.params.fach = v;
+    if (F.current.params.art === 'diktat' && v !== 'deutsch') F.current.params.art = 'arbeit';
     if (g === 'exFach') F.syncArtChips('exArt', v);
     if (g === 'arbFach') F.syncArtChips('arbArt', v);
   }
@@ -83,7 +86,7 @@ F.actions.deleteNote = function (el) {
 F.views.noteNew = function () {
   var imgs = F.pendingImages.note || [];
   return F.topbar('Merkkarten aus Foto') +
-    '<div class="card"><h2>1. Welches Fach?</h2>' + F.subjectChips('noteFach', 'deutsch', false) + '</div>' +
+    '<div class="card"><h2>1. Welches Fach?</h2>' + F.subjectChips('noteFach', F.current.params.fach || 'deutsch', false) + '</div>' +
     '<div class="card"><h2>2. Foto machen</h2><p>Fotografiere Regeln, Merksätze oder Lösungswege aus Mappe oder Buch.</p>' + F.photoPicker('note') + '</div>' +
     '<button class="btn big block fuchs" data-action="makeNotes" ' + (imgs.length ? '' : 'disabled') + '>🦊 Merkkarten erstellen</button>';
 };

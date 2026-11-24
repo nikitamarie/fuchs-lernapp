@@ -563,3 +563,8 @@ ul.big-list li { font-size: 1.15rem; margin-bottom: 6px; }
 .ladder-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 
 .art-tag { display: inline-block; background: var(--lila-100); color: var(--lila-800); border-radius: 999px; padding: 6px 14px; font-weight: 700; }
+
+.file-btn { display: block; width: 100%; margin-right: 0; }
+.native-file { display: block; margin: 8px 0 4px; font-size: 1rem; }
+
+.toast { bottom: calc(100px + env(safe-area-inset-bottom)); }

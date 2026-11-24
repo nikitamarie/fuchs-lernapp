@@ -1,7 +1,7 @@
 /* Kern: Speicher, Navigation, Hilfsfunktionen, Belohnungen.
    Bewusst einfaches JavaScript (ohne ?. und ??), damit ältere iPads mitkommen. */
 var F = window.F = {};
-F.VERSION = '13';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
+F.VERSION = '14';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
 
 /* ---------------- Speicher ---------------- */
 F.STORE_KEY = 'fuchsapp_v1';
@@ -424,13 +424,15 @@ F.photoPicker = function (key, label) {
   var imgs = F.pendingImages[key] || [];
  var thumbs = imgs.map(function (im) { return '<img src="' + im.url + '" alt="Foto">'; }).join('');
   return F.aiErrorHtml() + '<div class="thumbs" id="thumbs-' + key + '">' + thumbs + '</div>' +
-    '<div class="btn-row">' +
-    '<label class="btn big fuchs file-btn">📷 ' + F.esc(label || 'Foto machen oder auswählen') +
+    '<label class="btn big block fuchs file-btn">📷 ' + F.esc(imgs.length ? 'Noch ein Foto dazu' : (label || 'Foto machen oder auswählen')) +
     '<input type="file" accept="image/*" multiple data-photo-key="' + key + '"></label>' +
-    (imgs.length ? '<button class="btn big light" data-action="clearPhotos" data-key="' + key + '">Fotos löschen</button>' : '') +
-    '</div>' +
+    (imgs.length ? '<p class="small" style="color:#1d5a3d;font-weight:700">✓ ' + imgs.length + (imgs.length === 1 ? ' Foto' : ' Fotos') + ' bereit</p>' +
+      '<button class="btn small light" data-action="clearPhotos" data-key="' + key + '">Fotos löschen</button>' : '') +
     '<p class="muted small">Tipp: Seite gerade und hell fotografieren. Mehrere Seiten gehen auch. ' +
-    'Bitte keine Namen oder Gesichter mit aufs Foto.</p>';
+    'Bitte keine Namen oder Gesichter mit aufs Foto.</p>' +
+    '<details class="small"><summary>📎 Der Foto-Knopf reagiert nicht?</summary>' +
+    '<p>Dann tippe hier auf <b>„Datei auswählen“</b> – das ist der normale Knopf vom iPad:</p>' +
+    '<input type="file" accept="image/*" multiple class="native-file" data-photo-key="' + key + '"></details>';
 };
 document.addEventListener('change', function (ev) {
   var el = ev.target;
@@ -438,10 +440,15 @@ document.addEventListener('change', function (ev) {
   if (!key) return;
   if (!el.files || !el.files.length) return;
   F.toast('Fotos werden vorbereitet …', 1500);
-  F.readImages(el.files).then(function (imgs) {
+  var files = el.files;
+  F.readImages(files).then(function (imgs) {
     F.pendingImages[key] = (F.pendingImages[key] || []).concat(imgs);
+    try { el.value = ''; } catch (e) {}   // sonst geht dasselbe Foto kein zweites Mal
     F.render();
-  }).catch(function (e) { F.toast(e.message); });
+    F.toast('✓ ' + imgs.length + (imgs.length === 1 ? ' Foto' : ' Fotos') + ' bereit', 2000);
+    var t = document.getElementById('thumbs-' + key);
+    if (t && t.scrollIntoView) { try { t.scrollIntoView({ block: 'center' }); } catch (e2) { t.scrollIntoView(); } }
+  }).catch(function (e) { try { el.value = ''; } catch (e3) {} F.toast(e.message, 5000); });
 });
 F.actions.clearPhotos = function (el) {
   F.pendingImages[el.getAttribute('data-key')] = [];
@@ -523,6 +530,7 @@ F.artChipsHtml = function (group, selected, fach) {
 };
 F.actions.pickArt = function (el) {
   F.$$('#' + el.getAttribute('data-group') + ' .chip').forEach(function (c) { c.className = c.className.replace(/\s?\bon\b/g, '') + (c === el ? ' on' : ''); });
+  if (F.current) F.current.params.art = el.getAttribute('data-val');
 };
 /* Diktat nur bei Deutsch anbieten – wird beim Fachwechsel aufgerufen */
 F.syncArtChips = function (artGroup, fach) {
