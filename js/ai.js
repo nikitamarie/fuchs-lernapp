@@ -345,5 +345,30 @@ F.prompts = {
         'Zu JEDER Aufgabe: "hilfe" (Tipp ohne Lösung), "loesungsweg" (2 bis 4 Schritte, wie man auf genau diese Lösung kommt), "thema".\n') +
       'Antworte NUR mit JSON: {"titel": "Thema der Arbeit, max. 5 Wörter", "checkliste": ["Ich kann …", "…"], ' +
       '"aufgaben": [{"typ": "...", "frage": "...", "thema": "Checklisten-Punkt", ...}], ' + this.THEMEN_JSON + '}';
+  },
+
+  /* echte, korrigierte Klassenarbeit auswerten – motivierend, nie beschämend */
+  arbeit: function (fach) {
+    var mathe = fach === 'Mathe';
+    return 'Du bist eine warmherzige Lerncoachin. Ein Kind (' + F.prompts.kind() + ') zeigt dir seine echte, von der Lehrerin KORRIGIERTE Klassenarbeit im Fach ' + fach + '.\n' +
+      'Das Kind hat Konzentrationsschwierigkeiten und soll sich nach dem Lesen MOTIVIERT fühlen – egal welche Note. Niemals schimpfen oder beschämen, kein „falsch“, keine Vergleiche mit anderen Kindern.\n\n' +
+      'Lies die Fotos sorgfältig:\n' +
+      '- Note (z. B. „2+“, „befriedigend“) und/oder Punkte (erreicht und maximal), falls sichtbar. Nichts erfinden: wenn nicht sichtbar, leer lassen.\n' +
+      '- Kommentar der Lehrerin (ohne Namen wiederzugeben).\n' +
+      '- Welche Aufgaben richtig waren (Haken) und welche die Lehrerin als Fehler markiert hat.\n\n' +
+      'Antworte NUR mit JSON:\n' +
+      '{"titel": "Thema der Arbeit, max. 5 Wörter", "note": "Note wie auf dem Blatt oder leer", "punkte": Zahl oder null, "maxPunkte": Zahl oder null, ' +
+      '"lehrerKommentar": "Kommentar der Lehrerin ohne Namen oder leer", ' +
+      '"lob": "1–2 herzliche, ehrliche Sätze an das Kind (du-Form), die konkret sagen, was toll war", ' +
+      '"gutGemacht": ["2 bis 5 konkrete Dinge, die das Kind schon gut kann, z. B. „Du kannst Zahlen bis 1000 sicher lesen.“"], ' +
+      '"ueben": [{"thema": "was noch geübt wird (max. 4 Punkte)", "erklaerung": "kurz und kindgerecht, wie es richtig geht", "schritte": ["Schritt 1", "…"], "beispiel": "ein vorgemachtes Beispiel"}], ' +
+      '"fehler": [{"aufgabe": "die Aufgabe kurz", "kindAntwort": "was das Kind geschrieben hat", "richtig": "die richtige Lösung", "erklaerung": "kurz, wie man darauf kommt"}], ' +
+      '"aufgaben": [6 bis 10 NEUE Übungsaufgaben genau zu den Fehlern/Themen aus "ueben", gleiche Art wie in der Arbeit, mit "thema", "hilfe" und "loesungsweg"], ' +
+      this.THEMEN_JSON + '}\n\n' +
+      (mathe ? F.prompts.MATHE_TYPEN() + 'Prüfe jede Lösung zweimal nach!\n' :
+        'Aufgabentypen für "aufgaben": "auswahl" (genau 3 Optionen, "antwort" genau wie eine Option) oder "eingabe" (kurze Antwort). ' +
+        'Bei Deutsch/Rechtschreibung gern Wörter aus der Arbeit, die falsch geschrieben waren.\n') +
+      'Wenn (fast) alles richtig war: "ueben" und "fehler" dürfen leer sein; erstelle dann 6 Aufgaben zum Weiter-Trainieren auf etwas schwererem Niveau.';
   }
 };
+

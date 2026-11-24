@@ -165,6 +165,37 @@ F.actions.saveSchool = function () { F.saveCkDraft(); F.readSchoolForm(); F.curr
 F.saveCkDraft = function () { var t = F.$('#ckText'); if (t) F.ckDraft = t.value; };
 document.addEventListener('input', function (ev) { if (ev.target && ev.target.id === 'ckText') F.ckDraft = ev.target.value; });
 
+/* Übung aus einer KI-Antwort bauen und speichern (auch für Fehler-Übungen nach echten Klassenarbeiten) */
+F.buildPack = function (j, fach, extra) {
+  var aufgaben = (j.aufgaben || []).map(function (a) {
+    if (!a) return null;
+    if (F.mtask.isMath(a)) return F.mtask.normalize(a);
+    if (!a.frage || a.antwort == null) return null;
+    var typ = a.typ === 'auswahl' && a.optionen && a.optionen.length >= 2 ? 'auswahl' : 'eingabe';
+    var opts = typ === 'auswahl' ? a.optionen.map(String) : [];
+    if (typ === 'auswahl' && opts.indexOf(String(a.antwort)) < 0) opts.push(String(a.antwort));
+    return { typ: typ, frage: String(a.frage), optionen: opts, antwort: String(a.antwort), hilfe: String(a.hilfe || ''),
+      erklaerung: String(a.erklaerung || ''), loesungsweg: F.mtask.steps(a), thema: String(a.thema || '') };
+  }).filter(Boolean);
+  if (!aufgaben.length) return null;
+  var themen = (j.themen || []).filter(function (t) { return t && t.titel && (t.schritte || t.erklaerung); }).map(function (t) {
+    return { titel: String(t.titel), text: String(t.erklaerung || ''), schritte: F.mtask.steps({ schritte: t.schritte || [] }),
+      beispiel: String(t.beispiel || ''), beispielSchritte: F.mtask.steps({ schritte: t.beispielSchritte || t.beispielRechnung || [] }) };
+  });
+  var checkliste = (j.checkliste || []).map(function (c) { return String(c).trim(); }).filter(Boolean).slice(0, 15);
+  var pack = { id: F.uid(), fach: fach, titel: (extra && extra.titel) || j.titel || F.subject(fach).name, aufgaben: aufgaben, themen: themen, created: Date.now(), best: null,
+    checkliste: checkliste, quelle: 'fotos', fuer: '', stats: {} };
+  for (var k in (extra || {})) pack[k] = extra[k];
+  F.state.packs.push(pack);
+  themen.forEach(function (t) {
+    F.state.notes.push({ id: F.uid(), fach: fach, titel: t.titel, text: t.text, schritte: t.schritte, beispiel: t.beispiel, beispielSchritte: t.beispielSchritte, created: Date.now(), quelle: pack.titel });
+  });
+  (j.merkkarten || []).forEach(function (k2) {
+    if (k2 && k2.text) F.state.notes.push({ id: F.uid(), fach: fach, titel: k2.titel || 'Merksatz', text: k2.text, beispiel: k2.beispiel || '', created: Date.now(), quelle: pack.titel });
+  });
+  return pack;
+};
+
 F.actions.makePack = function () {
   var imgs = F.pendingImages.pack || [];
   var fachEl = F.$('#packFach .chip.on');
@@ -182,31 +213,8 @@ F.actions.makePack = function () {
   F.ai.generateJSON(prompt, imgs).then(function (j) {
     F.pendingImages.pack = [];
     F.ckDraft = '';
-    var aufgaben = (j.aufgaben || []).map(function (a) {
-      if (!a) return null;
-      if (F.mtask.isMath(a)) return F.mtask.normalize(a);
-      if (!a.frage || a.antwort == null) return null;
-      var typ = a.typ === 'auswahl' && a.optionen && a.optionen.length >= 2 ? 'auswahl' : 'eingabe';
-      var opts = typ === 'auswahl' ? a.optionen.map(String) : [];
-      if (typ === 'auswahl' && opts.indexOf(String(a.antwort)) < 0) opts.push(String(a.antwort));
-      return { typ: typ, frage: String(a.frage), optionen: opts, antwort: String(a.antwort), hilfe: String(a.hilfe || ''),
-        erklaerung: String(a.erklaerung || ''), loesungsweg: F.mtask.steps(a), thema: String(a.thema || '') };
-    }).filter(Boolean);
-    if (!aufgaben.length) throw new Error('Aus diesen Fotos konnten keine Aufgaben gemacht werden. Vielleicht ein anderes Foto probieren?');
-    var themen = (j.themen || []).filter(function (t) { return t && t.titel && (t.schritte || t.erklaerung); }).map(function (t) {
-      return { titel: String(t.titel), text: String(t.erklaerung || ''), schritte: F.mtask.steps({ schritte: t.schritte || [] }),
-        beispiel: String(t.beispiel || ''), beispielSchritte: F.mtask.steps({ schritte: t.beispielSchritte || t.beispielRechnung || [] }) };
-    });
-    var checkliste = (j.checkliste || []).map(function (c) { return String(c).trim(); }).filter(Boolean).slice(0, 15);
-    var pack = { id: F.uid(), fach: fach, titel: j.titel || F.subject(fach).name, aufgaben: aufgaben, themen: themen, created: Date.now(), best: null,
-      checkliste: checkliste, quelle: ckMode ? 'checkliste' : 'fotos', fuer: ckMode ? F.prompts.kind() : '', stats: {} };
-    F.state.packs.push(pack);
-    themen.forEach(function (t) {
-      F.state.notes.push({ id: F.uid(), fach: fach, titel: t.titel, text: t.text, schritte: t.schritte, beispiel: t.beispiel, beispielSchritte: t.beispielSchritte, created: Date.now(), quelle: pack.titel });
-    });
-    (j.merkkarten || []).forEach(function (k) {
-      if (k && k.text) F.state.notes.push({ id: F.uid(), fach: fach, titel: k.titel || 'Merksatz', text: k.text, beispiel: k.beispiel || '', created: Date.now(), quelle: pack.titel });
-    });
+    var pack = F.buildPack(j, fach, { quelle: ckMode ? 'checkliste' : 'fotos', fuer: ckMode ? F.prompts.kind() : '' });
+    if (!pack) throw new Error('Aus diesen Fotos konnten keine Aufgaben gemacht werden. Vielleicht ein anderes Foto probieren?');
     F.save();
     F.go('packDetail', { id: pack.id }, { replace: true });
   }).catch(function (e) { F.showAiError(e); });
@@ -441,10 +449,12 @@ F.actions.lpNext = function () {
           (r.erklaerung ? '<p>💡 ' + F.esc(r.erklaerung) + '</p>' : '') + (r.steps && r.steps.length ? F.mtask.stepsHtml({ loesungsweg: r.steps }) : '') + '</div>';
       }).join('') : '';
     }
+    var bonus = F.onPackFinished ? F.onPackFinished(x, lp, pct) : null;
+    if (bonus) extra = bonus.html + extra;
     F.finishRound({
       titel: lp.mode === 'probe' ? 'Probe-Klassenarbeit geschafft!' : 'Runde geschafft!',
       text: lp.richtig + ' von ' + lp.list.length + ' richtig' + (lp.mode === 'probe' ? ' (' + pct + '%).' : ' beim ersten Versuch.'),
-      tore: lp.richtig + (lp.mode === 'probe' ? 5 : 2),
+      tore: lp.richtig + (lp.mode === 'probe' ? 5 : 2) + (bonus ? bonus.tore : 0),
       again: x.id === 'local' ? { view: 'matheLocal', params: { typ: x.localTyp } } : null,
       extraHtml: extra
     });

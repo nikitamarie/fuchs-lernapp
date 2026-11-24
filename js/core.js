@@ -1,7 +1,7 @@
 /* Kern: Speicher, Navigation, Hilfsfunktionen, Belohnungen.
    Bewusst einfaches JavaScript (ohne ?. und ??), damit ältere iPads mitkommen. */
 var F = window.F = {};
-F.VERSION = '8';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
+F.VERSION = '9';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
 
 /* ---------------- Speicher ---------------- */
 F.STORE_KEY = 'fuchsapp_v1';
@@ -27,6 +27,8 @@ F.defaultState = function () {
     notes: [],       // {id, fach, titel, text, beispiel, created, quelle}
     packs: [],       // {id, fach, titel, aufgaben[], created}
     exams: [],       // {id, fach, titel, datum}
+    arbeiten: [],    // echte, korrigierte Klassenarbeiten
+    awards: {},      // Auszeichnungen {id: {n, last}}
     mathe: { geloest: 0 },
     stats: { runden: 0 }
   };

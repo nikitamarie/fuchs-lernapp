@@ -71,8 +71,10 @@ F.views.home = function () {
     '<span class="emoji">📚</span><span class="label">Üben mit Fotos</span><span class="sub">Fotos oder Checkliste · alle Fächer</span></button>' +
     '<button class="tile" data-action="go" data-view="notesHome">' +
     '<span class="emoji">💡</span><span class="label">Nachlesen</span><span class="sub">Regeln & Merksätze</span></button>' +
-    '<button class="tile" data-action="go" data-view="trophies">' +
-    '<span class="emoji">🏆</span><span class="label">Meine Gürtel</span><span class="sub">Tore & Abzeichen</span></button>' +
+    '<button class="tile" data-action="go" data-view="arbeitHome">' +
+    '<span class="emoji">🏅</span><span class="label">Meine Klassenarbeiten</span><span class="sub">Korrigierte Arbeit zeigen · Tore & Pokale</span></button>' +
+    '<button class="tile wide" data-action="go" data-view="trophies" style="min-height:0">' +
+    '<span class="emoji">🏆</span><span class="label">Gürtel & Pokale</span><span class="sub">' + F.state.tore + ' Tore · ' + Object.keys(F.state.awards || {}).length + ' Auszeichnungen</span></button>' +
     '</div>' +
     '<div class="center mt">' +
     '<button class="btn ghost small" data-action="go" data-view="parentGate">⚙️ Eltern-Bereich</button>' +
@@ -90,8 +92,9 @@ F.views.trophies = function () {
       '<span class="li-sub">' + (have ? 'Geschafft!' : 'ab ' + b.min + ' Tore') + '</span></span></div>';
   }).join('');
   var next = F.nextBelt(t);
-  return F.topbar('Meine Gürtel') +
+  return F.topbar('Gürtel & Pokale') +
     '<div class="card center"><div style="font-size:3.5rem">⚽</div><h1>' + t + ' Tore</h1>' +
     '<p>' + (next ? 'Noch ' + (next.min - t) + ' Tore bis zum ' + F.esc(F.beltDativ(next.name)) + '!' : 'Du hast den schwarzen Gürtel! Du bist eine echte Lern-Meisterin! 🦊') + '</p>' +
-    '<p class="muted small">Tore bekommst du für jede geschaffte Aufgabe und jedes Diktat.</p></div>' + rows;
+    '<p class="muted small">Tore bekommst du für jede geschaffte Aufgabe, jedes Diktat und jede hochgeladene Klassenarbeit.</p></div>' +
+    (F.awardShelfHtml ? F.awardShelfHtml() : '') + '<h2 class="mt">🥋 Meine Gürtel</h2>' + rows;
 };
