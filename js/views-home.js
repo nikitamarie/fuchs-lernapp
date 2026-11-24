@@ -48,21 +48,23 @@ F.countdownHtml = function () {
 };
 
 F.views.trophies = function () {
-  var t = F.state.tore;
-  var rows = F.BELTS.map(function (b) {
-    var have = t >= b.min;
-    return '<div class="list-item" style="cursor:default;opacity:' + (have ? 1 : 0.5) + '">' +
-      '<span class="li-emoji">' + (have ? '🥋' : '🔒') + '</span>' +
-      '<span class="li-main"><span class="li-title"><span class="belt" style="background:' + b.color + ';color:' + b.text + ';border-color:#ddd">' + F.esc(b.name) + '</span></span>' +
-      '<span class="li-sub">' + (have ? 'Geschafft!' : 'ab ' + b.min + ' Tore') + '</span></span></div>';
-  }).join('');
-  var next = F.nextBelt(t);
   var sn = F.streakNow ? F.streakNow() : 0, best = (F.state.streak && F.state.streak.best) || 0;
+  var cards = F.SUBJECTS.map(function (sb) {
+    var bp = F.beltProgress(sb.id);
+    return '<div class="fach-belt"><div class="fb-head"><span class="fb-e">' + sb.emoji + '</span><b>' + F.esc(sb.name) + '</b>' +
+      '<span class="fb-t">⚽ ' + bp.tore + '</span></div>' + F.beltHtml(bp.tore) +
+      '<div class="bar"><i style="width:' + bp.pct + '%"></i></div>' +
+      '<span class="muted small">Noch ' + bp.fehlt + ' Tore bis zum ' + F.esc(F.beltDativ(bp.next.name)) + '</span></div>';
+  }).join('');
+  var ladder = F.BELTS.map(function (b) {
+    return '<div class="ladder-row"><span class="belt" style="background:' + b.color + ';color:' + b.text + ';border-color:#ddd">' + F.esc(b.name) + '</span><span class="muted small">ab ' + b.min + ' Tore</span></div>';
+  }).join('') + '<div class="ladder-row"><span class="belt" style="background:#222;color:#fff">Schwarzer Gürtel · 1. Dan, 2. Dan …</span><span class="muted small">alle ' + F.DAN_STEP + ' Tore eine Stufe mehr</span></div>';
   return F.topbar('🏆 Erfolge', { noBack: true }) +
     '<div class="card center"><div style="font-size:2.6rem">🔥</div><h2>' + sn + (sn === 1 ? ' Tag' : ' Tage') + ' am Stück geübt</h2>' +
-    '<p class="muted small">Dein Rekord: ' + best + (best === 1 ? ' Tag' : ' Tage') + '. Jeden Tag eine kleine Runde reicht!</p></div>' +
-    '<div class="card center"><div style="font-size:3.5rem">⚽</div><h1>' + t + ' Tore</h1>' +
-    '<p>' + (next ? 'Noch ' + (next.min - t) + ' Tore bis zum ' + F.esc(F.beltDativ(next.name)) + '!' : 'Du hast den schwarzen Gürtel! Du bist eine echte Lern-Meisterin! 🦊') + '</p>' +
-    '<p class="muted small">Tore bekommst du für jede geschaffte Aufgabe, jedes Diktat und jede hochgeladene Klassenarbeit.</p></div>' +
-    (F.awardShelfHtml ? F.awardShelfHtml() : '') + '<h2 class="mt">🥋 Meine Gürtel</h2>' + rows;
+    '<p class="muted small">Dein Rekord: ' + best + (best === 1 ? ' Tag' : ' Tage') + '. Jeden Tag eine kleine Runde reicht! · Zusammen: ⚽ ' + F.state.tore + ' Tore</p></div>' +
+    '<h2>🥋 Meine Gürtel – für jedes Fach</h2><div class="fach-grid">' + cards + '</div>' +
+    '<p class="small muted">Tore gibt es für jede richtig gelöste Aufgabe, jedes Diktat (Deutsch) und jede hochgeladene Klassenarbeit – immer in dem Fach, in dem du übst. ' +
+    'Fächer auswählen: ⚙️ Mehr → Meine Fächer.</p>' +
+    (F.awardShelfHtml ? F.awardShelfHtml() : '') +
+    '<details class="card mt"><summary>🥋 Alle Gürtel und wie viele Tore man braucht</summary><div class="mt">' + ladder + '</div></details>';
 };

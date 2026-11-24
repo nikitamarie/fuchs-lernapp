@@ -172,7 +172,7 @@ F.actions.runArbeit = function () {
       if (pack) x.packId = pack.id;
     }
     F.state.arbeiten = (F.state.arbeiten || []).concat([x]);
-    x.belt = F.addTore(tore);
+    x.belt = F.addTore(tore, fach);
     x.belt = x.belt ? x.belt.name : '';
     F.save();
     F.go('arbeitResult', { id: x.id, fresh: true }, { replace: true });

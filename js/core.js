@@ -1,7 +1,7 @@
 /* Kern: Speicher, Navigation, Hilfsfunktionen, Belohnungen.
    Bewusst einfaches JavaScript (ohne ?. und ??), damit ältere iPads mitkommen. */
 var F = window.F = {};
-F.VERSION = '11';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
+F.VERSION = '12';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
 
 /* ---------------- Speicher ---------------- */
 F.STORE_KEY = 'fuchsapp_v1';
@@ -110,17 +110,44 @@ F.toast = function (msg, ms) {
 
 F.fox = function () { return F.state.profile.foxName || 'Fuchs'; };
 
-F.SUBJECTS = [
+/* Alle Fächer, die man auswählen kann (Grundschule bis weiterführende Schule) */
+F.FACH_KATALOG = [
   { id: 'deutsch', name: 'Deutsch', emoji: '📖' },
   { id: 'mathe', name: 'Mathe', emoji: '🔢' },
   { id: 'sachunterricht', name: 'Sachunterricht', emoji: '🌱' },
   { id: 'englisch', name: 'Englisch', emoji: '🇬🇧' },
-  { id: 'religion', name: 'Religion', emoji: '🕊️' }
+  { id: 'religion', name: 'Religion', emoji: '🕊️' },
+  { id: 'werte', name: 'Werte und Normen', emoji: '⚖️' },
+  { id: 'musik', name: 'Musik', emoji: '🎵' },
+  { id: 'kunst', name: 'Kunst', emoji: '🎨' },
+  { id: 'sport', name: 'Sport', emoji: '🤾‍♀️' },
+  { id: 'werken', name: 'Gestaltendes Werken', emoji: '🧵' },
+  { id: 'franzoesisch', name: 'Französisch', emoji: '🇫🇷' },
+  { id: 'spanisch', name: 'Spanisch', emoji: '🇪🇸' },
+  { id: 'latein', name: 'Latein', emoji: '🏛️' },
+  { id: 'biologie', name: 'Biologie', emoji: '🧬' },
+  { id: 'erdkunde', name: 'Erdkunde', emoji: '🌍' },
+  { id: 'geschichte', name: 'Geschichte', emoji: '📜' },
+  { id: 'physik', name: 'Physik', emoji: '⚛️' },
+  { id: 'chemie', name: 'Chemie', emoji: '🧪' },
+  { id: 'politik', name: 'Politik', emoji: '🗳️' },
+  { id: 'informatik', name: 'Informatik', emoji: '💻' }
 ];
-F.subject = function (id) {
-  for (var i = 0; i < F.SUBJECTS.length; i++) if (F.SUBJECTS[i].id === id) return F.SUBJECTS[i];
-  return { id: id, name: id, emoji: '📚' };
+F.DEFAULT_FAECHER = ['deutsch', 'mathe', 'sachunterricht', 'englisch', 'religion'];
+F.allFaecher = function () { return F.FACH_KATALOG.concat(F.state.profile.eigeneFaecher || []); };
+/* F.SUBJECTS = die Fächer, die das Kind ausgewählt hat */
+F.refreshSubjects = function () {
+  var ids = F.state.profile.faecher && F.state.profile.faecher.length ? F.state.profile.faecher : F.DEFAULT_FAECHER;
+  var all = F.allFaecher();
+  F.SUBJECTS = ids.map(function (id) { for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i]; return null; }).filter(Boolean);
+  if (!F.SUBJECTS.length) F.SUBJECTS = F.FACH_KATALOG.slice(0, 5);
 };
+F.subject = function (id) {
+  var all = F.allFaecher();
+  for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i];
+  return { id: id, name: id || 'Allgemein', emoji: '📚' };
+};
+F.refreshSubjects();
 
 /* ---------------- Navigation ---------------- */
 F.views = {};
@@ -152,6 +179,7 @@ F.home = function () {
 F.render = function () {
   var v = F.views[F.current.name];
   var app = document.getElementById('app');
+  F.refreshSubjects();
   if (!v) { app.innerHTML = '<p>Seite nicht gefunden.</p>'; return; }
   F.afterRender = null;
   var out = v(F.current.params);
@@ -209,36 +237,55 @@ F.goBtn = function (view, params, inner, cls, replace) {
 F.goBtnR = function (view, params, inner, cls) { return F.goBtn(view, params, inner, cls, true); };
 
 /* ---------------- Belohnungen: Tore & Kickbox-Gürtel ---------------- */
+/* Kickbox-Gürtel – für JEDES Fach einzeln. Bewusst langsam: Mit täglichem Üben ist der
+   schwarze Gürtel in einem Fach ein Ziel für das ganze Schuljahr. Danach geht es mit Dan-Stufen weiter. */
 F.BELTS = [
   { min: 0, name: 'Weißer Gürtel', color: '#ffffff', text: '#3f2270' },
-  { min: 25, name: 'Gelber Gürtel', color: '#ffe066', text: '#4a3b00' },
-  { min: 70, name: 'Orangener Gürtel', color: '#ffa94d', text: '#4a2400' },
-  { min: 140, name: 'Grüner Gürtel', color: '#69db7c', text: '#0f3d1a' },
-  { min: 240, name: 'Blauer Gürtel', color: '#74c0fc', text: '#06304d' },
-  { min: 380, name: 'Lila Gürtel', color: '#b197fc', text: '#2a1060' },
-  { min: 560, name: 'Brauner Gürtel', color: '#c08457', text: '#ffffff' },
-  { min: 800, name: 'Schwarzer Gürtel', color: '#222222', text: '#ffffff' }
+  { min: 60, name: 'Gelber Gürtel', color: '#ffe066', text: '#4a3b00' },
+  { min: 150, name: 'Orangener Gürtel', color: '#ffa94d', text: '#4a2400' },
+  { min: 300, name: 'Grüner Gürtel', color: '#69db7c', text: '#0f3d1a' },
+  { min: 500, name: 'Blauer Gürtel', color: '#74c0fc', text: '#06304d' },
+  { min: 800, name: 'Lila Gürtel', color: '#b197fc', text: '#2a1060' },
+  { min: 1200, name: 'Brauner Gürtel', color: '#c08457', text: '#ffffff' },
+  { min: 1800, name: 'Schwarzer Gürtel', color: '#222222', text: '#ffffff' }
 ];
+F.DAN_STEP = 800;
 F.beltFor = function (tore) {
   var b = F.BELTS[0];
   for (var i = 0; i < F.BELTS.length; i++) if (tore >= F.BELTS[i].min) b = F.BELTS[i];
+  var top = F.BELTS[F.BELTS.length - 1];
+  if (tore >= top.min + F.DAN_STEP) {
+    var dan = Math.floor((tore - top.min) / F.DAN_STEP);
+    return { min: top.min + dan * F.DAN_STEP, name: top.name + ' · ' + dan + '. Dan', color: top.color, text: top.text };
+  }
   return b;
 };
 F.nextBelt = function (tore) {
   for (var i = 0; i < F.BELTS.length; i++) if (tore < F.BELTS[i].min) return F.BELTS[i];
-  return null;
+  var top = F.BELTS[F.BELTS.length - 1];
+  var dan = Math.floor((tore - top.min) / F.DAN_STEP) + 1;
+  return { min: top.min + dan * F.DAN_STEP, name: top.name + ' · ' + dan + '. Dan', color: top.color, text: top.text };
 };
 F.beltHtml = function (tore) {
   var b = F.beltFor(tore);
   return '<span class="belt" style="background:' + b.color + ';color:' + b.text + '">🥋 ' + F.esc(b.name) + '</span>';
 };
-/* gibt den neuen Gürtel zurück, falls einer erreicht wurde */
-F.addTore = function (n) {
-  var before = F.beltFor(F.state.tore);
+F.toreIn = function (fach) { return (F.state.toreFach || {})[fach] || 0; };
+/* Fortschritt zum nächsten Gürtel in einem Fach (0–100) */
+F.beltProgress = function (fach) {
+  var t = F.toreIn(fach), b = F.beltFor(t), n = F.nextBelt(t);
+  return { tore: t, belt: b, next: n, pct: Math.round((t - b.min) / (n.min - b.min) * 100), fehlt: n.min - t };
+};
+/* Tore gutschreiben (gesamt + im Fach). Gibt {name, fach} zurück, wenn ein neuer Gürtel erreicht wurde. */
+F.addTore = function (n, fach) {
   F.state.tore += n;
+  if (!fach) { F.save(); return null; }
+  F.state.toreFach = F.state.toreFach || {};
+  var before = F.beltFor(F.toreIn(fach)).name;
+  F.state.toreFach[fach] = F.toreIn(fach) + n;
   F.save();
-  var after = F.beltFor(F.state.tore);
-  return after.name !== before.name ? after : null;
+  var after = F.beltFor(F.toreIn(fach)).name;
+  return after !== before ? { name: after, fach: fach } : null;
 };
 
 /* sanfte, ermutigende Sätze */
@@ -259,7 +306,7 @@ F.PAUSEN = [
 
 /* Abschluss-Bildschirm einer Runde: Tore, Gürtel, Bewegungspause */
 F.finishRound = function (opts) {
-  var newBelt = F.addTore(opts.tore || 0);
+  var newBelt = F.addTore(opts.tore || 0, opts.fach);
   F.state.stats.runden = (F.state.stats.runden || 0) + 1;
   if (F.touchStreak) F.touchStreak();
   F.save();
@@ -268,6 +315,7 @@ F.finishRound = function (opts) {
     text: opts.text || '',
     tore: opts.tore || 0,
     belt: newBelt ? newBelt.name : '',
+    fach: opts.fach || '',
     again: opts.again || null,
     extraHtml: opts.extraHtml || ''
   }, { replace: true });
@@ -275,14 +323,16 @@ F.finishRound = function (opts) {
 
 F.views.roundDone = function (p) {
   var pause = F.rand(F.PAUSEN);
-  var next = F.nextBelt(F.state.tore);
+  var sb = p.fach ? F.subject(p.fach) : null;
+  var bp = p.fach ? F.beltProgress(p.fach) : null;
   var html = '<div class="celebrate">' +
     '<div class="big pop">' + (p.belt ? '🥋' : '🏆') + '</div>' +
     '<h1>' + F.esc(p.titel) + '</h1>' +
     (p.text ? '<p>' + F.esc(p.text) + '</p>' : '') +
-    (p.tore ? '<p class="tore" style="font-size:1.3rem">+' + p.tore + ' Tore ⚽ &nbsp; (zusammen: ' + F.state.tore + ')</p>' : '') +
-    (p.belt ? '<div class="card fuchs"><h2>Neuer Gürtel!</h2><p style="font-size:1.3rem">Du hast jetzt den <b>' + F.esc(p.belt) + '</b>! ' + F.esc(F.fox()) + ' ist sooo stolz auf dich! 🦊</p></div>' : '') +
-    (next && !p.belt ? '<p class="muted">Noch ' + (next.min - F.state.tore) + ' Tore bis zum ' + F.esc(F.beltDativ(next.name)) + '.</p>' : '') +
+    (p.tore ? '<p class="tore" style="font-size:1.3rem">+' + p.tore + ' Tore ⚽' + (sb ? ' in ' + sb.emoji + ' ' + F.esc(sb.name) : '') + '</p>' : '') +
+    (p.belt ? '<div class="card fuchs"><h2>Neuer Gürtel' + (sb ? ' in ' + F.esc(sb.name) : '') + '!</h2><p style="font-size:1.3rem">Du hast jetzt den <b>' + F.esc(p.belt) + '</b>! ' + F.esc(F.fox()) + ' ist sooo stolz auf dich! 🦊</p></div>' : '') +
+    (bp && !p.belt ? '<div class="belt-line">' + F.beltHtml(bp.tore) + '<div class="bar"><i style="width:' + bp.pct + '%"></i></div>' +
+      '<span class="muted small">Noch ' + bp.fehlt + ' Tore bis zum ' + F.esc(F.beltDativ(bp.next.name)) + '</span></div>' : '') +
     '</div>' + (p.extraHtml || '') +
     '<div class="card soft center"><div style="font-size:3rem">' + pause.e + '</div>' +
     '<h3>Bewegungspause</h3><p style="font-size:1.2rem">' + F.esc(pause.t) + '</p></div>' +
@@ -415,7 +465,7 @@ F.loadingHtml = function (title, text) {
 };
 
 /* "Gelber Gürtel" → "zum Gelben Gürtel" */
-F.beltDativ = function (name) { return name.replace(/er Gürtel$/, 'en Gürtel'); };
+F.beltDativ = function (name) { return name.replace(/er Gürtel/, 'en Gürtel'); };
 
 /* Angaben zur Schule – für passende Aufgaben (Bundesland, Alter, Klasse) */
 F.BUNDESLAENDER = ['Baden-Württemberg', 'Bayern', 'Berlin', 'Brandenburg', 'Bremen', 'Hamburg', 'Hessen', 'Mecklenburg-Vorpommern',

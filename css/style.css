@@ -546,3 +546,18 @@ ul.big-list li { font-size: 1.15rem; margin-bottom: 6px; }
 .g2 { display: grid; grid-template-columns: 1fr 1fr; grid-gap: 12px; margin-bottom: 12px; }
 .g2 .btn { margin: 0; width: 100%; }
 @media (max-width: 520px) { .g2 { grid-template-columns: 1fr; } }
+
+/* ---------- Gürtel pro Fach ---------- */
+.mini-belts { display: block; border: none; background: transparent; padding: 0; margin: 2px 0 4px; cursor: pointer; text-align: left; }
+.mini-belt { display: inline-block; min-width: 40px; height: 30px; line-height: 26px; text-align: center; border-radius: 8px; margin: 0 6px 4px 0;
+  border: 2px solid rgba(255,255,255,0.7); font-size: 1rem; }
+.belt-line { max-width: 420px; margin: 6px auto 0; }
+.bar { height: 14px; background: var(--lila-100); border-radius: 999px; overflow: hidden; margin: 6px 0 4px; }
+.bar i { display: block; height: 100%; background: var(--fuchs); border-radius: 999px; }
+.fach-grid { display: grid; grid-template-columns: 1fr 1fr; grid-gap: 12px; margin-bottom: 12px; }
+@media (max-width: 520px) { .fach-grid { grid-template-columns: 1fr; } }
+.fach-belt { background: #fff; border-radius: 20px; box-shadow: var(--shadow); padding: 14px 16px; }
+.fb-head { display: flex; align-items: center; margin-bottom: 6px; }
+.fb-e { font-size: 1.6rem; margin-right: 8px; }
+.fb-t { margin-left: auto; font-weight: 700; color: var(--muted); }
+.ladder-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }

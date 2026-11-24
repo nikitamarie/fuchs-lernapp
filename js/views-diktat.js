@@ -336,6 +336,7 @@ F.actions.dpNext = function () {
     var d = F.getDiktat(dp.id);
     F.dp = null;
     F.finishRound({
+      fach: 'deutsch',
       titel: 'Diktat geschafft! 🎉',
       text: 'Toll durchgehalten! Jetzt kannst du dein Diktat mit einem Foto prüfen lassen.',
       tore: 5 + Math.min(10, dp.items.length),
@@ -458,7 +459,7 @@ F.views.diktatResult = function (p) {
   var newBelt = null;
   if (!c.toreGiven) {
     c.toreGiven = true;
-    newBelt = F.addTore(10);
+    newBelt = F.addTore(10, 'deutsch');
     F.save();
   }
   var top;

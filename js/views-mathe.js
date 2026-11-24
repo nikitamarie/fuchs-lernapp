@@ -263,6 +263,7 @@ F.actions.mtNext = function () {
     F.mt = null;
     F.state.mathe.geloest = (F.state.mathe.geloest || 0) + mt.richtig;
     F.finishRound({
+      fach: 'mathe',
       titel: 'Mathe-Training geschafft!',
       text: mt.richtig + ' von ' + mt.list.length + ' gleich beim ersten Mal richtig.',
       tore: mt.richtig + 2,

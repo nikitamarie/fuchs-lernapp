@@ -465,6 +465,7 @@ F.actions.lpNext = function () {
     var bonus = F.onPackFinished ? F.onPackFinished(x, lp, pct) : null;
     if (bonus) extra = bonus.html + extra;
     F.finishRound({
+      fach: x.fach,
       titel: lp.mode === 'probe' ? 'Probe-Klassenarbeit geschafft!' : 'Runde geschafft!',
       text: lp.richtig + ' von ' + lp.list.length + ' richtig' + (lp.mode === 'probe' ? ' (' + pct + '%).' : ' beim ersten Versuch.'),
       tore: lp.richtig + (lp.mode === 'probe' ? 5 : 2) + (bonus ? bonus.tore : 0),

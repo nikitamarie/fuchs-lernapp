@@ -50,16 +50,20 @@ F.streakNow = function () {
 F.views.home = function () {
   if (!F.state.profile.foxName) return F.views.welcome({ step: 1 });
   var s = F.state, kid = s.profile.kidName;
-  var belt = F.beltFor(s.tore), next = F.nextBelt(s.tore);
-  var pct = next ? Math.round((s.tore - belt.min) / (next.min - belt.min) * 100) : 100;
+  // Fach, das dem nächsten Gürtel am nächsten ist
+  var progs = F.SUBJECTS.map(function (sb) { var bp = F.beltProgress(sb.id); bp.sb = sb; return bp; });
+  var close = progs.slice().sort(function (a, b) { return a.fehlt - b.fehlt; })[0];
   var sn = F.streakNow();
   var up = F.nextExams();
   var html = '<div class="hero"><div class="fox">🦊</div><div style="flex:1">' +
     '<span class="hi">Hallo' + (kid ? ' ' + F.esc(kid) : '') + '!</span>' +
-    '<div class="pills">' + F.beltHtml(s.tore) + '<span class="pill">⚽ ' + s.tore + ' Tore</span>' +
+    '<div class="pills"><span class="pill">⚽ ' + s.tore + ' Tore</span>' +
     '<span class="pill">🔥 ' + sn + (sn === 1 ? ' Tag' : ' Tage') + '</span></div>' +
-    '<div class="xp"><i style="width:' + pct + '%"></i></div>' +
-    '<span class="hi-sub">' + (next ? 'Noch ' + (next.min - s.tore) + ' Tore bis zum ' + F.esc(F.beltDativ(next.name)) : 'Schwarzer Gürtel – Wahnsinn!') + '</span>' +
+    '<button class="mini-belts" data-action="tab" data-view="trophies" aria-label="Meine Gürtel">' + progs.map(function (bp) {
+      return '<span class="mini-belt" style="background:' + bp.belt.color + ';color:' + bp.belt.text + '" title="' + F.esc(bp.sb.name + ': ' + bp.belt.name) + '">' + bp.sb.emoji + '</span>';
+    }).join('') + '</button>' +
+    (close ? '<div class="xp"><i style="width:' + close.pct + '%"></i></div>' +
+      '<span class="hi-sub">' + close.sb.emoji + ' Noch ' + close.fehlt + ' Tore bis zum ' + F.esc(F.beltDativ(close.next.name)) + ' in ' + F.esc(close.sb.name) + '</span>' : '') +
     '</div></div>';
 
   // Arbeit schon zurück?
@@ -89,7 +93,9 @@ F.views.home = function () {
     F.goBtn('termine', {}, 'Alle Termine / neue Klassenarbeit eintragen', 'btn light small');
 
   // Deine Themen, nach Fach sortiert
-  var groups = F.SUBJECTS.map(function (sb) { return [sb, s.packs.filter(function (x) { return x.fach === sb.id; }).sort(function (a, b) { return b.created - a.created; })]; })
+  var order = F.SUBJECTS.map(function (sb) { return sb.id; });
+  s.packs.forEach(function (x) { if (order.indexOf(x.fach) < 0) order.push(x.fach); });
+  var groups = order.map(function (id) { return [F.subject(id), s.packs.filter(function (x) { return x.fach === id; }).sort(function (a, b) { return b.created - a.created; })]; })
     .filter(function (g) { return g[1].length; });
   html += '<h2 class="mt">📚 Deine Themen</h2>' +
     (groups.length ? groups.map(function (g) {
@@ -145,11 +151,13 @@ F.views.mehr = function () {
     '<label class="field"><span>Dein Name</span><input type="text" id="kidRename" value="' + F.esc(p.kidName) + '"></label>' +
     '<h3>🏫 Schule</h3><p class="small muted">Damit die Aufgaben zu Alter, Klasse und Lehrplan passen.</p>' + F.schoolFormHtml() +
     '<button class="btn gut" data-action="saveProfile">Speichern</button></div>' +
+    F.faecherCardHtml() +
     item('parentAI', '🤖', 'KI-Schlüssel (kostenlos, für Eltern)', F.ai.hasKey() ? '✅ eingerichtet' + (s.model ? ' · ' + F.esc(s.model) : '') : '⚠️ noch nicht eingerichtet – nötig für Fotos') +
     item('parentVoice', '🔊', 'Stimme & Vorlesen', 'Stimme, Tempo, Ton-Test') +
     item('parentChecks', '📋', 'Diktat-Ergebnisse & Fehlermuster', 'KI-Auswertung prüfen und korrigieren') +
     item('parentData', '💾', 'Datensicherung', 'Sichern, Wiederherstellen, Zurücksetzen') +
-    '<div class="card soft mt small"><b>Lernstand:</b> ' + F.state.tore + ' Tore · ' + F.esc(F.beltFor(F.state.tore).name) + ' · ' +
+    '<div class="card soft mt small"><b>Lernstand:</b> ' + F.state.tore + ' Tore · ' +
+    F.SUBJECTS.map(function (sb) { return sb.emoji + ' ' + F.esc(F.beltFor(F.toreIn(sb.id)).name); }).join(' · ') + ' · ' +
     (F.state.stats.runden || 0) + ' Runden · ' + F.state.packs.length + ' Themen · ' + F.state.diktate.length + ' Diktate · ' +
     (F.state.arbeiten || []).length + ' zurückbekommene Arbeiten · ' + F.state.trainWords.length + ' offene Übungswörter</div>' +
     '<p class="center muted small">App-Version ' + F.VERSION + '</p>' +
@@ -184,4 +192,41 @@ F.actions.examPractice = function (el) {
   F.lp = { packId: 'local', mode: mode, list: list.map(function (i) { return { a: i.a, src: i.src, opts: i.a.typ === 'auswahl' ? F.shuffle(i.a.optionen) : null }; }),
     idx: 0, richtig: 0, state: 'frage', hintShown: false, tries: 0, results: [], f: {}, af: null, marks: {}, satz: '' };
   F.go('packPlay', {});
+};
+
+/* ---------------- Meine Fächer ---------------- */
+F.EMOJI_WAHL = ['📚', '🎵', '🎨', '🌍', '🧪', '🗣️', '🧮', '🐾', '🌳', '💻', '🏃‍♀️', '✏️'];
+F.faecherCardHtml = function () {
+  var on = F.SUBJECTS.map(function (s) { return s.id; });
+  return '<div class="card"><h2>📚 Meine Fächer</h2><p class="small muted">Tippe an, welche Fächer du hast. Für jedes Fach gibt es einen eigenen Gürtel.</p>' +
+    '<div class="chips">' + F.allFaecher().map(function (s) {
+      return '<button class="chip ' + (on.indexOf(s.id) >= 0 ? 'on' : '') + '" data-action="toggleFach" data-id="' + F.esc(s.id) + '">' + s.emoji + ' ' + F.esc(s.name) + '</button>';
+    }).join('') + '</div>' +
+    '<h3>Eigenes Fach hinzufügen</h3><div class="btn-row" style="align-items:center">' +
+    '<select id="ownEmoji" style="flex:0 0 90px;margin:0 8px 10px 0">' + F.EMOJI_WAHL.map(function (e) { return '<option>' + e + '</option>'; }).join('') + '</select>' +
+    '<input type="text" id="ownFach" maxlength="30" placeholder="z. B. Werken" style="flex:1 1 180px;margin:0 8px 10px 0">' +
+    '<button class="btn gut" style="flex:0 0 auto" data-action="addFach">+ Hinzufügen</button></div></div>';
+};
+F.actions.toggleFach = function (el) {
+  var id = el.getAttribute('data-id');
+  var p = F.state.profile;
+  var list = (p.faecher && p.faecher.length ? p.faecher : F.DEFAULT_FAECHER).slice();
+  var i = list.indexOf(id);
+  if (i >= 0) { if (list.length === 1) { F.toast('Mindestens ein Fach brauchst du 🙂'); return; } list.splice(i, 1); }
+  else list.push(id);
+  p.faecher = list;
+  F.save();
+  F.render();
+};
+F.actions.addFach = function () {
+  var name = F.$('#ownFach').value.trim();
+  if (!name) { F.toast('Schreib den Namen des Fachs ins Feld 🙂'); return; }
+  var p = F.state.profile;
+  p.eigeneFaecher = p.eigeneFaecher || [];
+  var id = 'x_' + F.uid();
+  p.eigeneFaecher.push({ id: id, name: name.slice(0, 30), emoji: F.$('#ownEmoji').value });
+  p.faecher = (p.faecher && p.faecher.length ? p.faecher : F.DEFAULT_FAECHER).concat([id]);
+  F.save();
+  F.render();
+  F.toast(name + ' hinzugefügt ✓');
 };

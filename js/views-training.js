@@ -159,6 +159,7 @@ F.actions.trNext = function () {
     var p = tr.p;
     F.tr = null;
     F.finishRound({
+      fach: 'deutsch',
       titel: 'Training geschafft!',
       text: tr.firstTry + ' von ' + tr.total + ' Wörtern gleich beim ersten Mal richtig.' +
         (tr.mastered ? ' 🌟 ' + tr.mastered + (tr.mastered === 1 ? ' Wort hast du' : ' Wörter hast du') + ' jetzt richtig drauf!' : ''),
