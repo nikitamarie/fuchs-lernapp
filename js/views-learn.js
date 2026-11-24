@@ -117,31 +117,71 @@ F.views.packsHome = function (p) {
     var s = F.subject(x.fach);
     return '<button class="list-item" data-action="go" data-view="packDetail" data-params="' + F.esc(JSON.stringify({ id: x.id })) + '">' +
       '<span class="li-emoji">' + s.emoji + '</span><span class="li-main"><span class="li-title">' + F.esc(x.titel) + '</span>' +
-      '<span class="li-sub">' + s.name + ' · ' + x.aufgaben.length + ' Aufgaben' + (x.best != null ? ' · Bestes: ' + x.best + '%' : '') + '</span></span><span class="li-arrow">›</span></button>';
+      '<span class="li-sub">' + s.name + (x.quelle === 'checkliste' ? ' · 📝 Checkliste' : '') + ' · ' + x.aufgaben.length + ' Aufgaben' + (x.best != null ? ' · Bestes: ' + x.best + '%' : '') + '</span></span><span class="li-arrow">›</span></button>';
   }).join('');
   return F.topbar('Üben mit Fotos', { home: true }) +
     F.countdownHtml() +
-    '<p class="muted">Fotografiere Seiten aus Mappe oder Buch – ' + F.esc(F.fox()) + ' macht daraus Übungen wie in einer Klassenarbeit.</p>' +
+    '<p class="muted">Fotografiere Seiten aus Mappe oder Buch – oder gib die Checkliste für die Klassenarbeit ein. ' + F.esc(F.fox()) + ' macht daraus Übungen wie in einer Klassenarbeit.</p>' +
     F.subjectChips('packsFilter', fach, true) +
     (items || '<div class="card soft"><p>Noch keine Übungen. Los geht’s mit dem ersten Foto! 📷</p></div>') +
-    F.goBtn('packNew', { fach: fach || 'mathe' }, '📷 Neue Übung aus Foto', 'btn big block fuchs mt');
+    '<div class="btn-row mt">' + F.goBtn('packNew', { fach: fach || 'mathe', mode: 'fotos' }, '📷 Aus Fotos von Aufgaben', 'btn big fuchs') +
+    F.goBtn('packNew', { fach: fach || 'mathe', mode: 'checkliste' }, '📝 Aus einer Checkliste', 'btn big') + '</div>';
 };
 
 F.views.packNew = function (p) {
   var imgs = F.pendingImages.pack || [];
-  return F.topbar('Neue Übung') +
-    '<div class="card"><h2>1. Welches Fach?</h2>' + F.subjectChips('packFach', p.fach || 'mathe', false) + '</div>' +
-    '<div class="card"><h2>2. Fotos machen</h2><p>Am besten die Seiten, die in der Klassenarbeit drankommen.</p>' + F.photoPicker('pack') + '</div>' +
-    '<button class="btn big block fuchs" data-action="makePack" ' + (imgs.length ? '' : 'disabled') + '>🦊 Übung erstellen</button>';
+  var mode = p.mode || 'fotos';
+  var modeChip = function (m, label) {
+    return '<button class="chip ' + (mode === m ? 'on' : '') + '" data-action="packMode" data-mode="' + m + '">' + label + '</button>';
+  };
+  var html = F.topbar('Neue Übung') +
+    '<div class="card"><h2>Woraus soll ich Aufgaben machen?</h2><div class="chips">' +
+    modeChip('fotos', '📷 Fotos von Aufgaben') + modeChip('checkliste', '📝 Checkliste / Themenliste') + '</div>' +
+    '<p class="small muted">' + (mode === 'fotos' ? 'Arbeitsblätter, Buch- oder Heftseiten fotografieren – ' + F.esc(F.fox()) + ' macht ähnliche Aufgaben.' :
+      'Nur eine Checkliste für die Klassenarbeit (z. B. „Ich kann …“) oder eine Themenliste? ' + F.esc(F.fox()) + ' denkt sich passende Aufgaben für Klasse und Bundesland aus.') + '</p></div>' +
+    '<div class="card"><h2>1. Welches Fach?</h2>' + F.subjectChips('packFach', p.fach || 'mathe', false) + '</div>';
+  if (mode === 'fotos') {
+    html += '<div class="card"><h2>2. Fotos machen</h2><p>Am besten die Seiten, die in der Klassenarbeit drankommen.</p>' + F.photoPicker('pack') + '</div>' +
+      '<button class="btn big block fuchs" data-action="makePack" ' + (imgs.length ? '' : 'disabled') + '>🦊 Übung erstellen</button>';
+    return html;
+  }
+  html += '<div class="card"><h2>2. Für wen?</h2>' +
+    (p.editSchool ? F.schoolFormHtml() + '<button class="btn small gut" data-action="saveSchool">Übernehmen</button>' :
+      '<p style="font-size:1.1rem"><b>' + F.schoolLine() + '</b></p><button class="btn small light" data-action="editSchool">Ändern</button>') + '</div>' +
+    '<div class="card"><h2>3. Die Checkliste</h2>' +
+    '<p>Fotografiere die Checkliste <b>oder</b> tippe die Themen ein (ein Punkt pro Zeile). Beides zusammen geht auch.</p>' +
+    F.photoPicker('pack', 'Checkliste fotografieren') +
+    '<label class="field"><span>Themen / Checkliste eintippen</span><textarea id="ckText" style="min-height:150px" ' +
+    'placeholder="z. B.\nIch kann Zahlen bis 1000 lesen und schreiben.\nIch kann Zahlen am Zahlenstrahl finden.\nIch kann Plus- und Minusaufgaben bis 1000 rechnen.">' + F.esc(F.ckDraft || '') + '</textarea></label></div>' +
+    '<button class="btn big block fuchs" data-action="makePack">🦊 Aufgaben zur Checkliste erstellen</button>';
+  return html;
 };
+F.actions.packMode = function (el) {
+  F.current.params.mode = el.getAttribute('data-mode');
+  F.render();
+};
+F.actions.editSchool = function () { F.saveCkDraft(); F.current.params.editSchool = true; F.render(); };
+F.actions.saveSchool = function () { F.saveCkDraft(); F.readSchoolForm(); F.current.params.editSchool = false; F.render(); F.toast('Gespeichert ✓'); };
+F.saveCkDraft = function () { var t = F.$('#ckText'); if (t) F.ckDraft = t.value; };
+document.addEventListener('input', function (ev) { if (ev.target && ev.target.id === 'ckText') F.ckDraft = ev.target.value; });
+
 F.actions.makePack = function () {
   var imgs = F.pendingImages.pack || [];
   var fachEl = F.$('#packFach .chip.on');
   var fach = fachEl ? fachEl.getAttribute('data-val') : 'mathe';
+  var ckMode = F.current.params.mode === 'checkliste';
+  // Eingaben lesen, bevor der Lade-Bildschirm sie ersetzt
+  var ckText = ckMode && F.$('#ckText') ? F.$('#ckText').value.trim() : '';
+  if (ckMode && F.$('#scLand')) { F.readSchoolForm(); F.current.params.editSchool = false; }
+  if (ckMode && !ckText && !imgs.length) { F.toast('Bitte die Checkliste fotografieren oder Themen eintippen 🙂', 4000); return; }
+  if (!ckMode && !imgs.length) return;
+  F.saveCkDraft();
   document.getElementById('app').innerHTML = F.loadingHtml('Neue Übung', F.fox() + ' denkt sich Aufgaben aus …');
-  var prompt = fach === 'mathe' ? F.prompts.lernpaketMathe(12) : F.prompts.lernpaket(F.subject(fach).name, 12);
+  var prompt = ckMode ? F.prompts.checkliste(F.subject(fach).name, ckText, imgs.length > 0) :
+    (fach === 'mathe' ? F.prompts.lernpaketMathe(12) : F.prompts.lernpaket(F.subject(fach).name, 12));
   F.ai.generateJSON(prompt, imgs).then(function (j) {
     F.pendingImages.pack = [];
+    F.ckDraft = '';
     var aufgaben = (j.aufgaben || []).map(function (a) {
       if (!a) return null;
       if (F.mtask.isMath(a)) return F.mtask.normalize(a);
@@ -157,7 +197,9 @@ F.actions.makePack = function () {
       return { titel: String(t.titel), text: String(t.erklaerung || ''), schritte: F.mtask.steps({ schritte: t.schritte || [] }),
         beispiel: String(t.beispiel || ''), beispielSchritte: F.mtask.steps({ schritte: t.beispielSchritte || t.beispielRechnung || [] }) };
     });
-    var pack = { id: F.uid(), fach: fach, titel: j.titel || F.subject(fach).name, aufgaben: aufgaben, themen: themen, created: Date.now(), best: null };
+    var checkliste = (j.checkliste || []).map(function (c) { return String(c).trim(); }).filter(Boolean).slice(0, 15);
+    var pack = { id: F.uid(), fach: fach, titel: j.titel || F.subject(fach).name, aufgaben: aufgaben, themen: themen, created: Date.now(), best: null,
+      checkliste: checkliste, quelle: ckMode ? 'checkliste' : 'fotos', fuer: ckMode ? F.prompts.kind() : '', stats: {} };
     F.state.packs.push(pack);
     themen.forEach(function (t) {
       F.state.notes.push({ id: F.uid(), fach: fach, titel: t.titel, text: t.text, schritte: t.schritte, beispiel: t.beispiel, beispielSchritte: t.beispielSchritte, created: Date.now(), quelle: pack.titel });
@@ -178,12 +220,33 @@ F.views.packDetail = function (p) {
   return F.topbar(s.name, { home: true }) +
     '<div class="card center"><div style="font-size:3rem">' + s.emoji + '</div><h1>' + F.esc(x.titel) + '</h1>' +
     '<p>' + x.aufgaben.length + ' Aufgaben · in ' + rounds + (rounds === 1 ? ' kurzen Runde' : ' kurzen Runden') + ' zu je 5</p>' +
-    (x.best != null ? '<p class="muted">Dein bestes Ergebnis: ' + x.best + '%</p>' : '') + '</div>' +
+    (x.best != null ? '<p class="muted">Dein bestes Ergebnis: ' + x.best + '%</p>' : '') +
+    (x.fuer ? '<p class="small muted">Aufgaben passend für: ' + F.esc(x.fuer) + '</p>' : '') + '</div>' +
+    F.checklistHtml(x) +
     ((x.themen && x.themen.length) ? F.goBtn('packThemes', { id: x.id }, '📘 Erst erklären lassen: So geht’s', 'btn big block light') : '') +
     '<button class="btn big block fuchs" data-action="startPack" data-id="' + x.id + '" data-mode="runde">🎯 Trainingsrunde (5 Aufgaben)</button>' +
     '<button class="btn big block" data-action="startPack" data-id="' + x.id + '" data-mode="probe">📋 Probe-Klassenarbeit (alle Aufgaben)</button>' +
     '<p class="muted small center">Bei der Probe-Klassenarbeit gibt es erst am Ende die Auswertung – wie in echt. Aber ohne Zeitdruck!</p>' +
     '<div class="btn-row mt"><button class="btn danger small" data-action="deletePack" data-id="' + x.id + '">🗑️ Übung löschen</button></div>';
+};
+F.sameThema = function (a, b) {
+  var n = function (t) { return String(t || '').toLowerCase().replace(/[^a-zäöüß0-9]+/g, ' ').trim(); };
+  return !!a && !!b && n(a) === n(b);
+};
+F.checklistHtml = function (x) {
+  if (!x.checkliste || !x.checkliste.length) return '';
+  var rows = x.checkliste.map(function (punkt) {
+    var st = { ok: 0, n: 0 };
+    Object.keys(x.stats || {}).forEach(function (k) { if (F.sameThema(k, punkt)) { st.ok += x.stats[k].ok; st.n += x.stats[k].n; } });
+    var count = x.aufgaben.filter(function (a) { return F.sameThema(a.thema, punkt); }).length;
+    var icon = !st.n ? '⚪' : (st.ok / st.n >= 0.8 && st.n >= 2 ? '🟢' : '🟡');
+    var label = !st.n ? 'noch nicht geübt' : (icon === '🟢' ? 'kann ich schon gut!' : 'weiter üben (' + st.ok + ' von ' + st.n + ' richtig)');
+    return '<div class="list-item" style="cursor:default"><span class="li-emoji">' + icon + '</span>' +
+      '<span class="li-main"><span class="li-title" style="font-weight:600">' + F.esc(punkt) + '</span><span class="li-sub">' + label + '</span></span>' +
+      (count ? '<button class="btn small light" style="margin:0" data-action="startPack" data-id="' + x.id + '" data-mode="runde" data-thema="' + F.esc(punkt) + '">Üben</button>' : '') +
+      '</div>';
+  }).join('');
+  return '<h2>✅ Deine Checkliste</h2>' + rows;
 };
 F.views.packThemes = function (p) {
   var x = F.getPack(p.id);
@@ -205,7 +268,10 @@ F.actions.deletePack = function (el) {
 F.actions.startPack = function (el) {
   var x = F.getPack(el.getAttribute('data-id'));
   var mode = el.getAttribute('data-mode');
-  var list = mode === 'probe' ? x.aufgaben.slice() : F.shuffle(x.aufgaben).slice(0, 5);
+  var thema = el.getAttribute('data-thema');
+  var pool = thema ? x.aufgaben.filter(function (a) { return F.sameThema(a.thema, thema); }) : x.aufgaben;
+  if (!pool.length) pool = x.aufgaben;
+  var list = mode === 'probe' ? pool.slice() : F.shuffle(pool).slice(0, 5);
   F.lp = { packId: x.id, mode: mode, list: list.map(function (a) { return { a: a, opts: a.typ === 'auswahl' ? F.shuffle(a.optionen) : null }; }),
     idx: 0, richtig: 0, state: 'frage', hintShown: false, tries: 0, results: [], f: {}, af: null, marks: {}, satz: '' };
   F.go('packPlay', {});
@@ -263,11 +329,26 @@ F.views.packPlay = function () {
 };
 F.actions.lpHint = function () { F.lp.hintShown = true; F.render(); };
 
+/* Ergebnis je Checklisten-Punkt merken (nur der erste Versuch zählt) */
+F.packStat = function (a, ok) {
+  var lp = F.lp;
+  if (lp.counted || !a.thema) return;
+  lp.counted = true;
+  var x = F.getPack(lp.packId);
+  if (!x || x.id === 'local') return;
+  x.stats = x.stats || {};
+  var st = x.stats[a.thema] = x.stats[a.thema] || { ok: 0, n: 0 };
+  st.n++;
+  if (ok) st.ok++;
+  F.save();
+};
+
 /* Mathe-Aufgabe abgeben */
 F.actions.mfDone = function () {
   var lp = F.lp, a = lp.list[lp.idx].a;
   var r = F.mtask.check(a, lp);
   if (r.empty) { F.toast('Trag zuerst dein Ergebnis ein 🙂'); return; }
+  F.packStat(a, r.ok);
   var lob = function () { return '<div class="big-emoji pop">' + F.rand(['⚽', '🥊', '🦊', '🐶', '⭐', '🤾‍♀️']) + '</div>'; };
   if (lp.mode === 'probe') {
     lp.results.push({ frage: a.frage, given: r.given, ok: r.ok, a: a });
@@ -301,6 +382,7 @@ F.lpAnswer = function (given) {
   var x = F.getPack(lp.packId);
   var a = lp.list[lp.idx].a;
   var res = F.lpCheck(given, a.antwort, x.fach);
+  F.packStat(a, res === 'ok');
   if (lp.mode === 'probe') {
     lp.results.push({ frage: a.frage, given: given, antwort: a.antwort, ok: res === 'ok', erklaerung: a.erklaerung, steps: a.loesungsweg });
     if (res === 'ok') lp.richtig++;
@@ -340,7 +422,7 @@ F.actions.lpNext = function () {
   F.hideToast();
   lp.idx++;
   lp.state = 'frage'; lp.hintShown = false; lp.tries = 0;
-  lp.f = {}; lp.af = null; lp.marks = {}; lp.satz = '';
+  lp.f = {}; lp.af = null; lp.marks = {}; lp.satz = ''; lp.counted = false;
   if (lp.idx >= lp.list.length) {
     var x = F.getPack(lp.packId);
     var pct = Math.round(lp.richtig / lp.list.length * 100);

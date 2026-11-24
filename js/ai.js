@@ -212,11 +212,19 @@ F.ai = {
 
 /* ---------------- Vorlagen für die KI-Aufträge ---------------- */
 F.prompts = {
+  /* Angaben zum Kind (Eltern-Bereich → Schule) */
+  alter: function () { return parseInt(F.state.profile.alter, 10) || 8; },
+  land: function () { return F.state.profile.bundesland || 'Niedersachsen'; },
+  kind: function () {
+    var p = F.state.profile;
+    return F.prompts.alter() + ' Jahre alt, ' + (parseInt(p.klasse, 10) || 3) + '. Klasse, ' + (p.schulform || 'Grundschule') + ' in ' + F.prompts.land();
+  },
+
   KATEGORIEN: ['Groß/klein', 'Doppelter Mitlaut', 'ie/i', 'ck/tz', 'ß/ss/s', 'Dehnungs-h', 'ä/e oder äu/eu',
     'b/p, d/t, g/k am Ende', 'Buchstabe fehlt/vertauscht', 'Wort fehlt', 'Satzzeichen', 'Sonstiges'],
 
   diktatExtract: function () {
-    return 'Du hilfst einem Elternteil eines 8-jährigen Kindes (3. Klasse, Grundschule in Niedersachsen). ' +
+    return 'Du hilfst einem Elternteil. Das Kind: ' + F.prompts.kind() + '. ' +
       'Auf den Fotos ist ein Übungsdiktat, ein Diktattext, Lernwörter oder eine Rechtschreib-Seite aus Mappe oder Schulbuch.\n' +
       'Aufgabe: Schreibe den Diktat-Text bzw. die Lernwörter GENAU ab – in korrekter deutscher Rechtschreibung. ' +
       'Ignoriere Aufgabenstellungen, Seitenzahlen, Namen von Personen, Nummerierungen und Bilder. ' +
@@ -231,7 +239,7 @@ F.prompts = {
   },
 
   diktatCheck: function (original) {
-    return 'Ein 8-jähriges Kind (3. Klasse, Grundschule Niedersachsen, schreibt in Schreibschrift) hat ein Diktat auf Papier geschrieben. ' +
+    return 'Ein Kind (' + F.prompts.kind() + ', schreibt per Hand, oft in Schreibschrift) hat ein Diktat auf Papier geschrieben. ' +
       'Die Fotos zeigen, was das Kind geschrieben hat.\n\n' +
       'ORIGINAL (so wäre es richtig):\n"""\n' + original + '\n"""\n\n' +
       'Aufgaben:\n' +
@@ -239,7 +247,7 @@ F.prompts = {
       '2. Vergleiche Wort für Wort mit dem Original (auch Groß-/Kleinschreibung und Satzzeichen am Satzende).\n' +
       '3. Liste jeden echten Fehler auf. Sei fair: Wenn ein Buchstabe nur schwer lesbar ist, erfinde keinen Fehler, sondern setze "unsicher": true. ' +
       'Unschöne Schrift ist kein Fehler. Verbesserte/durchgestrichene Stellen zählen so, wie es am Ende dasteht.\n' +
-      '4. Schreibe zu jedem Fehler einen kurzen, freundlichen Tipp für ein 8-jähriges Kind (höchstens 2 kurze Sätze, nutze Grundschul-Strategien: ' +
+      '4. Schreibe zu jedem Fehler einen kurzen, freundlichen Tipp für ein ' + F.prompts.alter() + '-jähriges Kind (höchstens 2 kurze Sätze, nutze Rechtschreib-Strategien aus der Schule: ' +
       'Silben schwingen, Verlängern (Hund – Hunde), Ableiten (Bäume – Baum), Nomen-Probe (der/die/das), kurzer Vokal → doppelter Mitlaut, Merkwort). ' +
       'Niemals schimpfen, kein Wort wie "falsch".\n\n' +
       'Antworte NUR mit JSON in genau diesem Format:\n' +
@@ -253,7 +261,7 @@ F.prompts = {
   },
 
   merkzettel: function (fach) {
-    return 'Du hilfst einem 8-jährigen Kind (3. Klasse, Grundschule Niedersachsen) beim Lernen. Fach: ' + fach + '.\n' +
+    return 'Du hilfst einem Kind beim Lernen (' + F.prompts.kind() + '). Fach: ' + fach + '.\n' +
       'Auf den Fotos sind Seiten aus Mappe, Arbeitsblatt oder Schulbuch. Erkläre die Themen so, dass das Kind sie selbst anwenden kann. ' +
       'WICHTIG: Keine reinen Begriffs-Definitionen! Erkläre, WIE man vorgeht (bei Mathe: wie man solche Aufgaben rechnet, Schritt für Schritt), ' +
       'und rechne/zeige ein Beispiel komplett vor. Nutze genau die Methode und Schreibweise, die auf den Fotos zu sehen ist. ' +
@@ -264,12 +272,36 @@ F.prompts = {
       'Erstelle 2 bis 6 Karten. Nichts erfinden, was nicht zum Inhalt passt.';
   },
 
+  MATHE_TYPEN: function () {
+    return '' +
+      'Benutze diese Aufgabentypen (Rechenzeichen immer: + − · :  und für die Lücke einen Unterstrich _ ):\n' +
+      '1. "rechnung": eine Rechnung mit EINER Lücke, die das Kind ausfüllt. Die Lücke kann am Ende oder in der Mitte stehen. ' +
+      'Beispiel: {"typ":"rechnung","frage":"Rechne.","aufgabe":"345 + 230 = _","antwort":"575"} oder {"typ":"rechnung","frage":"Ergänze.","aufgabe":"345 + _ = 575","antwort":"230"}\n' +
+      '2. "paeckchen": 3 bis 5 zusammengehörende Rechnungen wie ein Päckchen im Heft (gern „schöne Päckchen“ mit Muster). ' +
+      'Beispiel: {"typ":"paeckchen","frage":"Rechne das Päckchen. Was fällt dir auf?","zeilen":[{"aufgabe":"300 + 200 = _","antwort":"500"},{"aufgabe":"310 + 200 = _","antwort":"510"}]}\n' +
+      '3. "schriftlich": schriftlich rechnen in Spalten (nur wenn schriftliches Rechnen auf den Fotos bzw. in der Checkliste vorkommt). ' +
+      '"aufschreiben": true heißt, das Kind muss die Zahlen selbst richtig untereinander schreiben. ' +
+      'Beispiel: {"typ":"schriftlich","frage":"Rechne schriftlich.","operator":"+","zahlen":["456","278"],"antwort":"734","aufschreiben":false}\n' +
+      '4. "sachaufgabe": eine kurze Text-Aufgabe (max. 3 Sätze, Alltag eines Kindes, z. B. Handball, Kickboxen, Tiere, Einkaufen). ' +
+      'Das Kind schreibt Rechnung, Ergebnis und Antwortsatz. Beispiel: {"typ":"sachaufgabe","frage":"Im Verein sind 124 Kinder. 38 spielen Handball. Wie viele machen etwas anderes?",' +
+      '"rechnung":"124 − 38 = 86","antwort":"86","einheit":"Kinder","antwortsatz":"86 Kinder machen etwas anderes."}\n' +
+      '5. "auswahl": nur für Aufgaben, bei denen man wirklich auswählt (z. B. <, > oder =; welche Zahl ist größer). Genau 3 Optionen, "antwort" genau wie eine Option.\n\n' +
+      'Mische die Typen passend zu den Fotos (vor allem rechnung, paeckchen und – falls auf den Fotos bzw. in der Checkliste – schriftlich und sachaufgabe).\n' +
+      'Zu JEDER Aufgabe:\n' +
+      '- "hilfe": ein kleiner Tipp, ohne die Lösung zu verraten (z. B. „Rechne erst die Hunderter.“)\n' +
+      '- "loesungsweg": 2 bis 5 kurze Schritte, wie man GENAU DIESE Aufgabe rechnet – mit den Zahlen der Aufgabe (z. B. ["300 + 200 = 500", "45 + 30 = 75", "500 + 75 = 575"]). ' +
+      'KEINE Begriffserklärungen wie „Addieren heißt plus rechnen“, sondern der Rechenweg. Nutze die Rechenwege/Strategien, die auf den Fotos bzw. in der Checkliste zu sehen sind ' +
+      '(z. B. Stellenwerte, schrittweise, Hilfsaufgabe, Umkehraufgabe, beim schriftlichen Rechnen den Übertrag).\n' +
+      '- "thema": kurzer Name des Themas.\n' +
+      'Prüfe jede Lösung zweimal nach – sie muss stimmen!\n\n';
+  },
+
   THEMEN_JSON: '"themen": [{"titel": "So rechnest du … / So geht …", "erklaerung": "1–2 kurze Sätze, worum es geht", ' +
     '"schritte": ["3 bis 6 kurze Schritte: WIE man solche Aufgaben löst"], "beispiel": "eine Beispielaufgabe", ' +
     '"beispielSchritte": ["das Beispiel komplett vorgerechnet, Schritt für Schritt, mit Ergebnis"]}]',
 
   lernpaket: function (fach, anzahl) {
-    return 'Du bist eine freundliche Grundschul-Lehrerin in Niedersachsen und bereitest ein 8-jähriges Kind (3. Klasse) auf eine Klassenarbeit vor. Fach: ' + fach + '.\n' +
+    return 'Du bist eine freundliche Lehrerin in ' + F.prompts.land() + ' und bereitest ein Kind (' + F.prompts.kind() + ') auf eine Klassenarbeit vor. Fach: ' + fach + '.\n' +
       'Auf den Fotos sind Seiten aus Mappe, Arbeitsblatt oder Schulbuch. Erstelle daraus ' + anzahl + ' Übungsaufgaben, die genau diesen Stoff üben ' +
       '(ähnlich wie in einer Klassenarbeit, aber nicht dieselben Aufgaben abschreiben). Altersgerecht, kurze Fragen, eindeutige Antworten. ' +
       'Beginne leicht und werde langsam etwas schwerer. Das Kind hat Konzentrationsschwierigkeiten: eine Sache pro Aufgabe, keine langen Texte.\n' +
@@ -284,32 +316,34 @@ F.prompts = {
   },
 
   lernpaketMathe: function (anzahl) {
-    return 'Du bist eine freundliche Grundschul-Lehrerin in Niedersachsen und bereitest ein 8-jähriges Kind (3. Klasse) auf eine MATHEARBEIT vor.\n' +
+    return 'Du bist eine freundliche Lehrerin in ' + F.prompts.land() + ' und bereitest ein Kind (' + F.prompts.kind() + ') auf eine MATHEARBEIT vor.\n' +
       'Auf den Fotos sind Seiten aus Mappe, Arbeitsheft oder Schulbuch (z. B. „Flex und Flo“). Schau genau hin: Welche Themen und welche Aufgabenformate sind zu sehen? ' +
       'Erstelle daraus ' + anzahl + ' NEUE Aufgaben im GLEICHEN Format wie auf den Fotos (andere Zahlen, gleicher Schwierigkeitsgrad, Zahlenraum wie auf den Fotos, meist bis 1000). ' +
       'Beginne leicht, werde langsam schwerer. Das Kind hat Konzentrationsschwierigkeiten: kurze, klare Aufgaben.\n\n' +
-      'Benutze diese Aufgabentypen (Rechenzeichen immer: + − · :  und für die Lücke einen Unterstrich _ ):\n' +
-      '1. "rechnung": eine Rechnung mit EINER Lücke, die das Kind ausfüllt. Die Lücke kann am Ende oder in der Mitte stehen. ' +
-      'Beispiel: {"typ":"rechnung","frage":"Rechne.","aufgabe":"345 + 230 = _","antwort":"575"} oder {"typ":"rechnung","frage":"Ergänze.","aufgabe":"345 + _ = 575","antwort":"230"}\n' +
-      '2. "paeckchen": 3 bis 5 zusammengehörende Rechnungen wie ein Päckchen im Heft (gern „schöne Päckchen“ mit Muster). ' +
-      'Beispiel: {"typ":"paeckchen","frage":"Rechne das Päckchen. Was fällt dir auf?","zeilen":[{"aufgabe":"300 + 200 = _","antwort":"500"},{"aufgabe":"310 + 200 = _","antwort":"510"}]}\n' +
-      '3. "schriftlich": schriftlich rechnen in Spalten (nur wenn schriftliches Rechnen auf den Fotos vorkommt). ' +
-      '"aufschreiben": true heißt, das Kind muss die Zahlen selbst richtig untereinander schreiben. ' +
-      'Beispiel: {"typ":"schriftlich","frage":"Rechne schriftlich.","operator":"+","zahlen":["456","278"],"antwort":"734","aufschreiben":false}\n' +
-      '4. "sachaufgabe": eine kurze Text-Aufgabe (max. 3 Sätze, Alltag eines Kindes, z. B. Handball, Kickboxen, Tiere, Einkaufen). ' +
-      'Das Kind schreibt Rechnung, Ergebnis und Antwortsatz. Beispiel: {"typ":"sachaufgabe","frage":"Im Verein sind 124 Kinder. 38 spielen Handball. Wie viele machen etwas anderes?",' +
-      '"rechnung":"124 − 38 = 86","antwort":"86","einheit":"Kinder","antwortsatz":"86 Kinder machen etwas anderes."}\n' +
-      '5. "auswahl": nur für Aufgaben, bei denen man wirklich auswählt (z. B. <, > oder =; welche Zahl ist größer). Genau 3 Optionen, "antwort" genau wie eine Option.\n\n' +
-      'Mische die Typen passend zu den Fotos (vor allem rechnung, paeckchen und – falls auf den Fotos – schriftlich und sachaufgabe).\n' +
-      'Zu JEDER Aufgabe:\n' +
-      '- "hilfe": ein kleiner Tipp, ohne die Lösung zu verraten (z. B. „Rechne erst die Hunderter.“)\n' +
-      '- "loesungsweg": 2 bis 5 kurze Schritte, wie man GENAU DIESE Aufgabe rechnet – mit den Zahlen der Aufgabe (z. B. ["300 + 200 = 500", "45 + 30 = 75", "500 + 75 = 575"]). ' +
-      'KEINE Begriffserklärungen wie „Addieren heißt plus rechnen“, sondern der Rechenweg. Nutze die Rechenwege/Strategien, die auf den Fotos zu sehen sind ' +
-      '(z. B. Stellenwerte, schrittweise, Hilfsaufgabe, Umkehraufgabe, beim schriftlichen Rechnen den Übertrag).\n' +
-      '- "thema": kurzer Name des Themas.\n' +
-      'Prüfe jede Lösung zweimal nach – sie muss stimmen!\n\n' +
+      F.prompts.MATHE_TYPEN() +
       'Zusätzlich "themen": Für jedes Thema auf den Fotos eine Erklärung „So rechnest du …“: wie man solche Aufgaben Schritt für Schritt löst, ' +
       'und ein komplett vorgerechnetes Beispiel. Benutze die Methode von den Fotos.\n' +
       'Antworte NUR mit JSON: {"titel": "Thema, max. 5 Wörter", "aufgaben": [ ... ], ' + this.THEMEN_JSON + '}';
+  },
+
+  /* Übung aus einer Checkliste / Themenliste (ohne Aufgaben-Fotos) */
+  checkliste: function (fach, text, hatFotos) {
+    var mathe = fach === 'Mathe';
+    return 'Du bist eine freundliche, erfahrene Lehrerin in ' + F.prompts.land() + ' und bereitest ein Kind (' + F.prompts.kind() + ') auf eine Klassenarbeit im Fach ' + fach + ' vor.\n' +
+      'Es gibt KEINE Aufgaben-Fotos, nur eine Checkliste (Lernziele / Themen, die in der Arbeit drankommen)' +
+      (hatFotos ? ' – sie ist auf den Fotos zu sehen' : '') + (text ? (hatFotos ? ', dazu diese Notizen' : '') + ':\n"""\n' + text + '\n"""' : '.') + '\n\n' +
+      'Aufgaben:\n' +
+      '1. Lies die Checkliste und schreibe jeden Punkt kurz und kindgerecht in "checkliste" (so wie „Ich kann …“).\n' +
+      '2. Erstelle zu JEDEM Punkt 2 bis 3 passende Übungsaufgaben (insgesamt höchstens 24), so wie sie typischerweise in einer Klassenarbeit dieser Klassenstufe in ' + F.prompts.land() +
+      ' vorkommen – passend zum Kerncurriculum/Lehrplan des Bundeslandes und zum Alter (Zahlenraum, Wortschatz, Schwierigkeit). Beginne leicht, werde langsam schwerer. ' +
+      'Das Kind hat Konzentrationsschwierigkeiten: kurze, klare Aufgaben.\n' +
+      '3. Gib bei jeder Aufgabe in "thema" GENAU den passenden Checklisten-Punkt an (wortgleich wie in "checkliste").\n' +
+      '4. Erkläre jeden Checklisten-Punkt in "themen": wie man solche Aufgaben löst (Schritte) und ein komplett vorgemachtes Beispiel. Keine reinen Begriffs-Definitionen.\n\n' +
+      (mathe ? F.prompts.MATHE_TYPEN() +
+        'Zu JEDER Aufgabe: "hilfe" (Tipp ohne Lösung), "loesungsweg" (2 bis 5 Schritte mit den Zahlen der Aufgabe), "thema". Prüfe jede Lösung zweimal nach!\n' :
+        'Aufgabentypen: "auswahl" (genau 3 Antwortmöglichkeiten, eine richtig) oder "eingabe" (kurze Antwort: eine Zahl oder ein Wort). ' +
+        'Zu JEDER Aufgabe: "hilfe" (Tipp ohne Lösung), "loesungsweg" (2 bis 4 Schritte, wie man auf genau diese Lösung kommt), "thema".\n') +
+      'Antworte NUR mit JSON: {"titel": "Thema der Arbeit, max. 5 Wörter", "checkliste": ["Ich kann …", "…"], ' +
+      '"aufgaben": [{"typ": "...", "frage": "...", "thema": "Checklisten-Punkt", ...}], ' + this.THEMEN_JSON + '}';
   }
 };

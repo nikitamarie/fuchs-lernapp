@@ -62,7 +62,7 @@ F.views.parentHome = function () {
     '<button class="list-item" data-action="go" data-view="parentVoice"><span class="li-emoji">🔊</span><span class="li-main"><span class="li-title">Stimme & Vorlesen</span>' +
     '<span class="li-sub">Stimme, Tempo, Anzeige</span></span><span class="li-arrow">›</span></button>' +
     '<button class="list-item" data-action="go" data-view="parentData"><span class="li-emoji">💾</span><span class="li-main"><span class="li-title">Datensicherung & Sonstiges</span>' +
-    '<span class="li-sub">Sichern, Wiederherstellen, Fuchs umbenennen, PIN</span></span><span class="li-arrow">›</span></button>' +
+    '<span class="li-sub">Schule & Klasse, Sichern, Fuchs umbenennen, PIN</span></span><span class="li-arrow">›</span></button>' +
     '<div class="card soft mt small"><b>Lernstand:</b> ' + F.state.tore + ' Tore · ' + F.esc(F.beltFor(F.state.tore).name) + ' · ' +
     (F.state.stats.runden || 0) + ' Runden · ' + F.state.diktate.length + ' Diktate · ' + F.state.checks.length + ' Diktat-Prüfungen · ' +
     F.state.trainWords.length + ' offene Übungswörter</div>' +
@@ -280,6 +280,8 @@ F.views.parentData = function () {
     '<div class="card"><h2>🦊 Fuchs</h2><label class="field"><span>Name des Fuchses</span><input type="text" id="foxRename" value="' + F.esc(F.state.profile.foxName) + '"></label>' +
     '<label class="field"><span>Name des Kindes</span><input type="text" id="kidRename" value="' + F.esc(F.state.profile.kidName) + '"></label>' +
     '<button class="btn" data-action="renameFox">Speichern</button></div>' +
+    '<div class="card"><h2>🏫 Schule</h2><p class="small muted">Damit die Aufgaben zu Alter, Klasse und Lehrplan passen.</p>' + F.schoolFormHtml() +
+    '<button class="btn" data-action="saveSchoolParent">Speichern</button></div>' +
     '<div class="card"><h2>🔒 PIN</h2><button class="btn light" data-action="resetPin">PIN ändern</button></div>' +
     '<div class="card"><h2>⚠️ Alles löschen</h2><button class="btn danger" data-action="resetAll">App komplett zurücksetzen</button></div>';
 };
@@ -440,3 +442,5 @@ F.actions.sndTest = function (el) {
   try { if (synth.paused) synth.resume(); synth.speak(u); } catch (e) { done('speak() Fehler: ' + e.name); return; }
   setTimeout(function () { if (!r[t]) done('nach 4 s: spricht=' + synth.speaking + ', wartet=' + synth.pending + ', Start gemeldet=' + (st ? 'ja' : 'nein')); }, 4000);
 };
+
+F.actions.saveSchoolParent = function () { F.readSchoolForm(); F.toast('Gespeichert ✓'); };

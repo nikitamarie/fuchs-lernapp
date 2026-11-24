@@ -68,7 +68,7 @@ F.views.home = function () {
     '<button class="tile" data-action="go" data-view="matheHome">' +
     '<span class="emoji">🔢</span><span class="label">Mathe</span><span class="sub">Zahlen bis 1000</span></button>' +
     '<button class="tile" data-action="go" data-view="packsHome">' +
-    '<span class="emoji">📚</span><span class="label">Üben mit Fotos</span><span class="sub">Alle Fächer · Klassenarbeit-Check</span></button>' +
+    '<span class="emoji">📚</span><span class="label">Üben mit Fotos</span><span class="sub">Fotos oder Checkliste · alle Fächer</span></button>' +
     '<button class="tile" data-action="go" data-view="notesHome">' +
     '<span class="emoji">💡</span><span class="label">Nachlesen</span><span class="sub">Regeln & Merksätze</span></button>' +
     '<button class="tile" data-action="go" data-view="trophies">' +

@@ -1,7 +1,7 @@
 /* Kern: Speicher, Navigation, Hilfsfunktionen, Belohnungen.
    Bewusst einfaches JavaScript (ohne ?. und ??), damit ältere iPads mitkommen. */
 var F = window.F = {};
-F.VERSION = '7';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
+F.VERSION = '8';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
 
 /* ---------------- Speicher ---------------- */
 F.STORE_KEY = 'fuchsapp_v1';
@@ -9,7 +9,7 @@ F.STORE_KEY = 'fuchsapp_v1';
 F.defaultState = function () {
   return {
     version: 1,
-    profile: { foxName: '', kidName: '' },
+    profile: { foxName: '', kidName: '', bundesland: 'Niedersachsen', alter: 8, klasse: 3, schulform: 'Grundschule' },
     settings: {
       apiKey: '',
       model: '',
@@ -411,3 +411,30 @@ F.loadingHtml = function (title, text) {
 
 /* "Gelber Gürtel" → "zum Gelben Gürtel" */
 F.beltDativ = function (name) { return name.replace(/er Gürtel$/, 'en Gürtel'); };
+
+/* Angaben zur Schule – für passende Aufgaben (Bundesland, Alter, Klasse) */
+F.BUNDESLAENDER = ['Baden-Württemberg', 'Bayern', 'Berlin', 'Brandenburg', 'Bremen', 'Hamburg', 'Hessen', 'Mecklenburg-Vorpommern',
+  'Niedersachsen', 'Nordrhein-Westfalen', 'Rheinland-Pfalz', 'Saarland', 'Sachsen', 'Sachsen-Anhalt', 'Schleswig-Holstein', 'Thüringen'];
+F.SCHULFORMEN = ['Grundschule', 'Oberschule', 'Gesamtschule', 'Realschule', 'Hauptschule', 'Gymnasium', 'Förderschule'];
+F.schoolLine = function () {
+  var p = F.state.profile;
+  return F.esc((p.bundesland || 'Niedersachsen') + ' · ' + (p.alter || 8) + ' Jahre · Klasse ' + (p.klasse || 3) + ' · ' + (p.schulform || 'Grundschule'));
+};
+F.schoolFormHtml = function () {
+  var p = F.state.profile;
+  var opt = function (list, cur) { return list.map(function (x) { return '<option ' + (String(x) === String(cur) ? 'selected' : '') + '>' + F.esc(x) + '</option>'; }).join(''); };
+  var nums = function (a, b) { var r = []; for (var i = a; i <= b; i++) r.push(i); return r; };
+  return '<label class="field"><span>Bundesland</span><select id="scLand">' + opt(F.BUNDESLAENDER, p.bundesland || 'Niedersachsen') + '</select></label>' +
+    '<div class="btn-row"><label class="field" style="flex:1 1 140px;margin-right:10px"><span>Alter</span><select id="scAlter">' + opt(nums(5, 16), p.alter || 8) + '</select></label>' +
+    '<label class="field" style="flex:1 1 140px;margin-right:10px"><span>Klasse</span><select id="scKlasse">' + opt(nums(1, 10), p.klasse || 3) + '</select></label>' +
+    '<label class="field" style="flex:2 1 200px"><span>Schulform</span><select id="scForm">' + opt(F.SCHULFORMEN, p.schulform || 'Grundschule') + '</select></label></div>';
+};
+F.readSchoolForm = function () {
+  var p = F.state.profile;
+  if (!F.$('#scLand')) return;
+  p.bundesland = F.$('#scLand').value;
+  p.alter = parseInt(F.$('#scAlter').value, 10);
+  p.klasse = parseInt(F.$('#scKlasse').value, 10);
+  p.schulform = F.$('#scForm').value;
+  F.save();
+};
