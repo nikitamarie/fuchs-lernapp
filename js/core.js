@@ -1,7 +1,7 @@
 /* Kern: Speicher, Navigation, Hilfsfunktionen, Belohnungen.
    Bewusst einfaches JavaScript (ohne ?. und ??), damit ältere iPads mitkommen. */
 var F = window.F = {};
-F.VERSION = '12';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
+F.VERSION = '13';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
 
 /* ---------------- Speicher ---------------- */
 F.STORE_KEY = 'fuchsapp_v1';
@@ -496,3 +496,44 @@ F.readSchoolForm = function () {
 
 /* "1 Aufgabe" / "3 Aufgaben" */
 F.nAufgaben = function (n) { return n + (n === 1 ? ' Aufgabe' : ' Aufgaben'); };
+
+/* Art eines Termins bzw. einer zurückbekommenen Arbeit */
+F.ARTEN = [
+  { id: 'arbeit', name: 'Klassenarbeit', emoji: '📝' },
+  { id: 'test', name: 'Test', emoji: '✏️' },
+  { id: 'diktat', name: 'Diktat', emoji: '🔤', nurFach: 'deutsch' }
+];
+F.art = function (id) {
+  for (var i = 0; i < F.ARTEN.length; i++) if (F.ARTEN[i].id === id) return F.ARTEN[i];
+  return F.ARTEN[0];
+};
+/* alte Einträge ohne Art: "Diktat" erkennen, sonst Klassenarbeit */
+F.artOf = function (e) { return e.art || (/diktat/i.test(e.titel || '') ? 'diktat' : 'arbeit'); };
+F.artLabel = function (e) { var a = F.art(F.artOf(e)); return a.emoji + ' ' + a.name; };
+F.defaultTitel = function (fach, art) {
+  if (art === 'diktat') return 'Diktat';
+  return F.subject(fach).name + (art === 'test' ? '-Test' : '-Arbeit');
+};
+F.artChipsHtml = function (group, selected, fach) {
+  return '<div class="chips" id="' + group + '">' + F.ARTEN.map(function (a) {
+    var hide = a.nurFach && a.nurFach !== fach;
+    return '<button class="chip ' + (selected === a.id && !hide ? 'on' : '') + (hide ? ' hidden' : '') + '" data-action="pickArt" data-group="' + group + '" data-val="' + a.id + '">' +
+      a.emoji + ' ' + a.name + '</button>';
+  }).join('') + '</div>';
+};
+F.actions.pickArt = function (el) {
+  F.$$('#' + el.getAttribute('data-group') + ' .chip').forEach(function (c) { c.className = c.className.replace(/\s?\bon\b/g, '') + (c === el ? ' on' : ''); });
+};
+/* Diktat nur bei Deutsch anbieten – wird beim Fachwechsel aufgerufen */
+F.syncArtChips = function (artGroup, fach) {
+  var box = F.$('#' + artGroup);
+  if (!box) return;
+  F.$$('#' + artGroup + ' .chip').forEach(function (c) {
+    var a = F.art(c.getAttribute('data-val'));
+    var hide = a.nurFach && a.nurFach !== fach;
+    c.className = c.className.replace(/\s?\bhidden\b/g, '') + (hide ? ' hidden' : '');
+    if (hide) c.className = c.className.replace(/\s?\bon\b/g, '');
+  });
+  if (!box.querySelector('.chip.on')) { var first = box.querySelector('.chip'); if (first) first.className += ' on'; }
+};
+F.chosenArt = function (artGroup) { var c = F.$('#' + artGroup + ' .chip.on'); return c ? c.getAttribute('data-val') : 'arbeit'; };

@@ -6,7 +6,7 @@
   if (!F.state.seeded) {
     F.state.seeded = true;
     if (F.daysUntil('2026-11-24') >= 0) {
-      F.state.exams.push({ id: F.uid(), fach: 'deutsch', titel: 'Diktat', datum: '2026-11-24' });
+      F.state.exams.push({ id: F.uid(), fach: 'deutsch', art: 'diktat', titel: 'Diktat', datum: '2026-11-24' });
     }
     F.save();
   }

@@ -14,6 +14,8 @@ F.actions.filterSubject = function (el) {
     F.render();
   } else {
     F.$$('#' + g + ' .chip').forEach(function (c) { c.className = 'chip' + (c === el ? ' on' : ''); });
+    if (g === 'exFach') F.syncArtChips('exArt', v);
+    if (g === 'arbFach') F.syncArtChips('arbArt', v);
   }
 };
 

@@ -1,16 +1,16 @@
-/* Echte, korrigierte Klassenarbeiten hochladen: motivierende Auswertung, Tore, Auszeichnungen
+/* Echte, korrigierte Klassenarbeiten, Tests und Diktate hochladen: motivierende Auswertung, Tore, Auszeichnungen
    und eine Fehler-Übung zu den Sachen, die noch nicht so gut geklappt haben. */
 
 /* ---------------- Auszeichnungen (Pokalregal) ---------------- */
 F.AWARDS = [
-  { id: 'mutig', e: '🦁', name: 'Mutig-Medaille', how: 'Deine erste echte Klassenarbeit hochgeladen' },
+  { id: 'mutig', e: '🦁', name: 'Mutig-Medaille', how: 'Deine erste zurückbekommene Arbeit, Test oder Diktat hochgeladen' },
   { id: 'dabei', e: '🤾‍♀️', name: 'Team-Spielerin', how: 'Jede hochgeladene Arbeit zählt – auch diese!' },
   { id: 'aufsteiger', e: '📈', name: 'Aufsteiger-Pokal', how: 'Besser als die letzte Arbeit im gleichen Fach' },
   { id: 'stark', e: '💪', name: 'Starke Leistung', how: 'Mindestens drei Viertel geschafft (75 %)' },
   { id: 'sterne', e: '🌟', name: 'Sterne-Arbeit', how: 'Fast alles richtig (90 % oder Note 1)' },
   { id: 'detektiv', e: '🔍', name: 'Fehler-Detektivin', how: 'Die Fehler-Übung nach einer Arbeit geschafft' },
-  { id: 'sammlerin', e: '📚', name: 'Arbeiten-Sammlerin', how: '3 Klassenarbeiten hochgeladen' },
-  { id: 'champion', e: '🦊', name: 'Fuchs-Champion', how: '5 Klassenarbeiten hochgeladen' },
+  { id: 'sammlerin', e: '📚', name: 'Arbeiten-Sammlerin', how: '3 Arbeiten, Tests oder Diktate hochgeladen' },
+  { id: 'champion', e: '🦊', name: 'Fuchs-Champion', how: '5 Arbeiten, Tests oder Diktate hochgeladen' },
   { id: 'allrounder', e: '🎯', name: 'Allrounderin', how: 'Arbeiten aus 3 verschiedenen Fächern hochgeladen' }
 ];
 F.award = function (id) {
@@ -84,42 +84,17 @@ F.getArbeit = function (id) {
 };
 
 /* ---------------- Ansichten ---------------- */
-F.views.arbeitHome = function () {
-  var list = (F.state.arbeiten || []).slice().sort(function (a, b) { return b.date - a.date; });
-  var items = list.map(function (x) {
-    var s = F.subject(x.fach);
-    return '<button class="list-item" data-action="go" data-view="arbeitResult" data-params="' + F.esc(JSON.stringify({ id: x.id })) + '">' +
-      '<span class="li-emoji">' + s.emoji + '</span><span class="li-main"><span class="li-title">' + F.esc(x.titel || s.name) + '</span>' +
-      '<span class="li-sub">' + F.formatDate(new Date(x.date).toISOString()) + (x.note ? ' · Note ' + F.esc(x.note) : '') +
-      (x.punkte !== '' && x.punkte != null && x.maxPunkte ? ' · ' + F.esc(x.punkte) + ' von ' + F.esc(x.maxPunkte) + ' Punkten' : '') +
-      ' · ' + (x.awards || []).map(function (g) { return F.award(g.id).e; }).join('') + '</span></span><span class="li-arrow">›</span></button>';
-  }).join('');
-  var kommend = F.nextExams();
-  var vorbei = F.state.exams.filter(function (e) { return F.daysUntil(e.datum) < 0 && !(F.state.arbeiten || []).some(function (x) { return x.examId === e.id; }); })
-    .sort(function (a, b) { return a.datum < b.datum ? 1 : -1; }).slice(0, 5);
-  return F.topbar('Meine Klassenarbeiten', { home: true }) +
-    '<h2>📅 Kommende Klassenarbeiten</h2>' +
-    F.examListHtml(kommend, 'Noch keine Klassenarbeit eingetragen. Weißt du schon, wann die nächste ist?') +
-    F.goBtn('examNew', {}, '+ Neue Klassenarbeit eintragen', 'btn big block') +
-    (vorbei.length ? '<h2 class="mt">⏳ Schon geschrieben – zurückbekommen?</h2>' + F.examListHtml(vorbei) : '') +
-    '<h2 class="mt">🏅 Zurückbekommen</h2>' +
-    '<div class="card fuchs center"><div style="font-size:3rem">🏅</div>' +
-    '<h2>Du hast eine Arbeit zurückbekommen?</h2>' +
-    '<p>Mach ein Foto davon! ' + F.esc(F.fox()) + ' schaut sie sich an, sagt dir, was du schon super kannst – und du bekommst <b>Tore und Auszeichnungen</b>. Egal welche Note! ⚽</p>' +
-    F.goBtn('arbeitNew', {}, '📷 Korrigierte Arbeit hochladen', 'btn big block fuchs') + '</div>' +
-    (items ? '<h2>Bisher hochgeladen</h2>' + items : '') +
-    F.awardShelfHtml();
-};
-
 F.views.arbeitNew = function (p) {
   var imgs = F.pendingImages.arbeit || [];
-  return F.topbar('Arbeit hochladen') +
-    '<div class="card"><h2>1. Welches Fach?</h2>' + F.subjectChips('arbFach', p.fach || 'mathe', false) + '</div>' +
-    '<div class="card"><h2>2. Fotos von der korrigierten Arbeit</h2>' +
-    '<p>Alle Seiten fotografieren – auch die Seite mit der Note oder den Punkten.</p>' +
+  var fach0 = p.fach || 'mathe';
+  return F.topbar('Zurückbekommen – hochladen') +
+    '<div class="card"><h2>1. Welches Fach?</h2>' + F.subjectChips('arbFach', fach0, false) +
+    '<h3 class="mt">Was hast du zurückbekommen?</h3>' + F.artChipsHtml('arbArt', p.art || 'arbeit', fach0) + '</div>' +
+    '<div class="card"><h2>2. Fotos machen</h2>' +
+    '<p>Alle Seiten fotografieren – auch die Seite mit der Note, den Punkten oder der Fehlerzahl.</p>' +
     '<p class="small"><b>Wichtig:</b> Deinen Namen und die Unterschrift der Lehrerin bitte vorher abdecken (z. B. mit einem Zettel).</p>' +
-    F.photoPicker('arbeit', 'Arbeit fotografieren') + '</div>' +
-    '<button class="btn big block fuchs" data-action="runArbeit" ' + (imgs.length ? '' : 'disabled') + '>🦊 Arbeit anschauen</button>';
+    F.photoPicker('arbeit', 'Fotografieren') + '</div>' +
+    '<button class="btn big block fuchs" data-action="runArbeit" ' + (imgs.length ? '' : 'disabled') + '>🦊 Anschauen lassen</button>';
 };
 
 F.actions.runArbeit = function () {
@@ -127,15 +102,18 @@ F.actions.runArbeit = function () {
   if (!imgs.length) return;
   var fachEl = F.$('#arbFach .chip.on');
   var fach = fachEl ? fachEl.getAttribute('data-val') : 'mathe';
-  document.getElementById('app').innerHTML = F.loadingHtml('Arbeit anschauen', F.fox() + ' schaut sich deine Arbeit an …');
-  F.ai.generateJSON(F.prompts.arbeit(F.subject(fach).name), imgs).then(function (j) {
+  var art = F.chosenArt('arbArt');
+  if (art === 'diktat' && fach !== 'deutsch') art = 'arbeit';
+  document.getElementById('app').innerHTML = F.loadingHtml('Anschauen', F.fox() + ' schaut sich ' + (art === 'diktat' ? 'dein Diktat' : art === 'test' ? 'deinen Test' : 'deine Arbeit') + ' an …');
+  F.ai.generateJSON(F.prompts.arbeit(F.subject(fach).name, art), imgs).then(function (j) {
     F.pendingImages.arbeit = [];
     var prozent = F.arbeitProzent(j);
-    var prev = (F.state.arbeiten || []).filter(function (x) { return x.fach === fach && x.prozent != null; })
+    // verglichen wird nur mit der gleichen Art im gleichen Fach (Diktat mit Diktat, Test mit Test)
+    var prev = (F.state.arbeiten || []).filter(function (x) { return x.fach === fach && F.artOf(x) === art && x.prozent != null; })
       .sort(function (a, b) { return b.date - a.date; })[0];
     var arr = function (x) { return (x || []).map(function (t) { return typeof t === 'string' ? t : (t && (t.text || t.titel)) || ''; }).filter(Boolean).slice(0, 6); };
     var x = {
-      id: F.uid(), fach: fach, date: Date.now(), titel: String(j.titel || F.subject(fach).name + '-Arbeit').slice(0, 60),
+      id: F.uid(), fach: fach, art: art, date: Date.now(), titel: String(j.titel || F.defaultTitel(fach, art)).slice(0, 60),
       note: String(j.note || '').slice(0, 20), punkte: j.punkte != null ? String(j.punkte) : '', maxPunkte: j.maxPunkte != null ? String(j.maxPunkte) : '',
       prozent: prozent, lob: String(j.lob || ''), lehrerKommentar: String(j.lehrerKommentar || ''),
       gutGemacht: arr(j.gutGemacht),
@@ -166,6 +144,17 @@ F.actions.runArbeit = function () {
     faecher[fach] = 1;
     if (Object.keys(faecher).length === 3 && !(F.state.awards && F.state.awards.allrounder)) gained.push(F.giveAward('allrounder'));
     x.awards = gained; x.tore = tore;
+    // Diktat: angestrichene Wörter werden Übungswörter im Diktat-Training
+    x.uebungswoerter = 0;
+    if (art === 'diktat') {
+      (j.falscheWoerter || []).forEach(function (w) {
+        var wort = F.spell.clean(w && (w.richtig || w.soll));
+        if (!wort || wort.length < 2) return;
+        if (F.state.trainWords.some(function (t) { return t.wort === wort; })) return;
+        F.state.trainWords.push({ wort: wort, tipp: String(w.tipp || ''), kategorie: String(w.kategorie || 'Sonstiges'), added: Date.now(), richtigInFolge: 0, arbeitId: x.id });
+        x.uebungswoerter++;
+      });
+    }
     // Fehler-Übung
     if (j.aufgaben && j.aufgaben.length) {
       var pack = F.buildPack(j, fach, { titel: 'Fehler-Übung: ' + x.titel, quelle: 'arbeit', arbeitId: x.id });
@@ -185,7 +174,7 @@ F.views.arbeitResult = function (p) {
   var s = F.subject(x.fach);
   if (p.fresh) {
     p.fresh = false;
-    F.afterRender = function () { F.confetti(); F.speech.speak('Juhu! Super, dass du deine Arbeit zeigst!'); };
+    F.afterRender = function () { F.confetti(); F.speech.speak('Juhu! Super, dass du sie mir zeigst!'); };
   }
   var vergleich = '';
   if (x.vorher && x.prozent != null) {
@@ -194,16 +183,19 @@ F.views.arbeitResult = function (p) {
       d === 0 ? '<div class="card soft center"><b>➡️ Genauso stark wie letztes Mal.</b> Mit der Fehler-Übung geht’s weiter nach oben!</div>' :
       '<div class="card soft center"><b>Diesmal war es schwieriger.</b> Das passiert den Besten! Mit der Fehler-Übung holst du es dir zurück. 🦊</div>';
   }
-  var head = '<div class="celebrate"><div class="big pop">🏆</div><h1>Danke, dass du deine Arbeit zeigst!</h1>' +
+  var was = F.artOf(x) === 'diktat' ? 'dein Diktat' : F.artOf(x) === 'test' ? 'deinen Test' : 'deine Arbeit';
+  var head = '<div class="celebrate"><div class="big pop">🏆</div><h1>Danke, dass du ' + was + ' zeigst!</h1>' +
     (x.lob ? '<p style="font-size:1.25rem">' + F.esc(x.lob) + '</p>' : '') +
-    '<p class="tore" style="font-size:1.3rem">+' + x.tore + ' Tore ⚽ &nbsp; (zusammen: ' + F.state.tore + ')</p>' +
+    '<p class="tore" style="font-size:1.3rem">+' + x.tore + ' Tore ⚽ in ' + s.emoji + ' ' + F.esc(s.name) + '</p>' +
     (x.note || x.maxPunkte ? '<p class="muted">' + (x.note ? 'Note: <b>' + F.esc(x.note) + '</b>' : '') +
       (x.maxPunkte && x.punkte !== '' ? (x.note ? ' · ' : '') + '<b>' + F.esc(x.punkte) + '</b> von ' + F.esc(x.maxPunkte) + ' Punkten' : '') + '</p>' : '') +
     '</div>';
-  var html = F.topbar(s.name + '-Arbeit', { home: true }) + head +
+  var html = F.topbar(s.name + ' · ' + F.art(F.artOf(x)).name, { home: true }) + head +
     (x.belt ? '<div class="card fuchs center"><h2>🥋 Neuer Gürtel: ' + F.esc(x.belt) + '!</h2></div>' : '') +
     (x.awards.length ? '<h2 class="center">Deine Auszeichnungen</h2>' + F.awardCardsHtml(x.awards) : '') +
     vergleich +
+    (x.uebungswoerter ? '<div class="card fuchs center"><h2>🔤 ' + x.uebungswoerter + (x.uebungswoerter === 1 ? ' Wort ist' : ' Wörter sind') + ' jetzt in deinen Übungswörtern</h2>' +
+      F.goBtn('trainSetup', { source: 'train' }, '💪 Übungswörter trainieren', 'btn big block fuchs') + '</div>' : '') +
     (x.gutGemacht.length ? '<div class="card gut"><h2>⭐ Das kannst du schon super</h2><ul class="big-list">' +
       x.gutGemacht.map(function (g) { return '<li>' + F.esc(g) + '</li>'; }).join('') + '</ul></div>' : '') +
     (x.lehrerKommentar ? '<div class="card soft"><b>✍️ Deine Lehrerin schreibt:</b><p style="margin:6px 0 0">„' + F.esc(x.lehrerKommentar) + '“</p></div>' : '') +
@@ -225,11 +217,11 @@ F.views.arbeitResult = function (p) {
   }
   html += '<button class="btn big block light" data-action="back">Fertig</button>' +
     '<p class="small muted center">Hat ' + F.esc(F.fox()) + ' etwas falsch gelesen? Die Note und Punkte siehst du nur zur Erinnerung – wichtig ist, dass du übst! 🦊</p>' +
-    '<button class="btn danger small" data-action="delArbeit" data-id="' + x.id + '">🗑️ Diese Arbeit löschen</button>';
+    '<button class="btn danger small" data-action="delArbeit" data-id="' + x.id + '">🗑️ Löschen</button>';
   return html;
 };
 F.actions.delArbeit = function (el) {
-  if (!confirm('Diese Arbeit löschen? (Tore und Auszeichnungen bleiben.)')) return;
+  if (!confirm('Wirklich löschen? (Tore und Auszeichnungen bleiben.)')) return;
   var id = el.getAttribute('data-id');
   F.state.arbeiten = (F.state.arbeiten || []).filter(function (x) { return x.id !== id; });
   F.save();

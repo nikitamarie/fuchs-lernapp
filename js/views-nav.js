@@ -89,8 +89,8 @@ F.views.home = function () {
     F.goBtn('packNew', { mode: 'fotos' }, '📸 Neues Thema fotografieren', 'btn big fuchs') +
     F.goBtn('diktatHome', {}, '📝 Diktat üben' + (s.trainWords.length ? ' (' + s.trainWords.length + ' Übungswörter)' : ''), 'btn big') + '</div>';
 
-  html += '<h2>📅 Nächste Klassenarbeiten</h2>' + F.examListHtml(up.slice(0, 4), 'Keine Klassenarbeit eingetragen.') +
-    F.goBtn('termine', {}, 'Alle Termine / neue Klassenarbeit eintragen', 'btn light small');
+  html += '<h2>📅 Nächste Termine</h2>' + F.examListHtml(up.slice(0, 4), 'Keine Arbeit, kein Test und kein Diktat eingetragen.') +
+    F.goBtn('termine', {}, 'Alle Termine / neuen Termin eintragen', 'btn light small');
 
   // Deine Themen, nach Fach sortiert
   var order = F.SUBJECTS.map(function (sb) { return sb.id; });
@@ -122,18 +122,19 @@ F.views.termine = function () {
     .sort(function (a, b) { return a.datum < b.datum ? 1 : -1; });
   var zurueck = (s.arbeiten || []).slice().sort(function (a, b) { return b.date - a.date; });
   return F.topbar('📅 Termine', { noBack: true }) +
-    F.examListHtml(kommend, 'Keine anstehenden Klassenarbeiten. Weißt du schon, wann die nächste ist?') +
-    F.goBtn('examNew', {}, '➕ Neue Klassenarbeit eintragen', 'btn big block fuchs') +
+    '<p class="muted small">Klassenarbeiten, Tests und Diktate – alles an einem Ort.</p>' +
+    F.examListHtml(kommend, 'Nichts eingetragen. Weißt du schon, wann die nächste Arbeit, der nächste Test oder das nächste Diktat ist?') +
+    F.goBtn('examNew', {}, '➕ Neuen Termin eintragen', 'btn big block fuchs') +
     (vorbei.length ? '<h2 class="mt">⏳ Schon geschrieben – zurückbekommen?</h2>' + F.examListHtml(vorbei.slice(0, 8)) : '') +
-    '<h2 class="mt">🏅 Zurückbekommene Arbeiten</h2>' +
+    '<h2 class="mt">🏅 Zurückbekommen</h2>' +
     (zurueck.length ? zurueck.map(function (x) {
       var sb = F.subject(x.fach);
       return '<button class="list-item" data-action="go" data-view="arbeitResult" data-params="' + F.esc(JSON.stringify({ id: x.id })) + '">' +
         '<span class="li-emoji">' + sb.emoji + '</span><span class="li-main"><span class="li-title">' + F.esc(x.titel || sb.name) + '</span>' +
-        '<span class="li-sub">' + F.formatDate(new Date(x.date).toISOString()) + (x.note ? ' · Note ' + F.esc(x.note) : '') + ' · ' +
+        '<span class="li-sub">' + F.art(F.artOf(x)).name + ' · ' + F.formatDate(new Date(x.date).toISOString()) + (x.note ? ' · Note ' + F.esc(x.note) : '') + ' · ' +
         (x.awards || []).map(function (g) { return F.award(g.id).e; }).join('') + '</span></span><span class="li-arrow">›</span></button>';
-    }).join('') : '<p class="muted">Noch keine. Wenn du eine Arbeit zurückbekommst: Foto machen und Tore holen! ⚽</p>') +
-    F.goBtn('arbeitNew', {}, '📷 Korrigierte Arbeit hochladen', 'btn light block');
+    }).join('') : '<p class="muted">Noch nichts. Wenn du eine Arbeit, einen Test oder ein Diktat zurückbekommst: Foto machen und Tore holen! ⚽</p>') +
+    F.goBtn('arbeitNew', {}, '📷 Arbeit, Test oder Diktat hochladen', 'btn light block');
 };
 F.views.arbeitHome = F.views.termine;
 F.views.parentExams = F.views.termine;

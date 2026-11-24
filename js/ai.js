@@ -349,9 +349,11 @@ F.prompts = {
   },
 
   /* echte, korrigierte Klassenarbeit auswerten – motivierend, nie beschämend */
-  arbeit: function (fach) {
+  arbeit: function (fach, art) {
     var mathe = fach === 'Mathe';
-    return 'Du bist eine warmherzige Lerncoachin. Ein Kind (' + F.prompts.kind() + ') zeigt dir seine echte, von der Lehrerin KORRIGIERTE Klassenarbeit im Fach ' + fach + '.\n' +
+    var was = art === 'diktat' ? 'sein echtes, von der Lehrerin KORRIGIERTES Diktat' : art === 'test' ? 'seinen echten, von der Lehrerin KORRIGIERTEN Test' :
+      'seine echte, von der Lehrerin KORRIGIERTE Klassenarbeit';
+    return 'Du bist eine warmherzige Lerncoachin. Ein Kind (' + F.prompts.kind() + ') zeigt dir ' + was + ' im Fach ' + fach + '.\n' +
       'Das Kind hat Konzentrationsschwierigkeiten und soll sich nach dem Lesen MOTIVIERT fühlen – egal welche Note. Niemals schimpfen oder beschämen, kein „falsch“, keine Vergleiche mit anderen Kindern.\n\n' +
       'Lies die Fotos sorgfältig:\n' +
       '- Note (z. B. „2+“, „befriedigend“) und/oder Punkte (erreicht und maximal), falls sichtbar. Nichts erfinden: wenn nicht sichtbar, leer lassen.\n' +
@@ -366,6 +368,10 @@ F.prompts = {
       '"fehler": [{"aufgabe": "die Aufgabe kurz", "kindAntwort": "was das Kind geschrieben hat", "richtig": "die richtige Lösung", "erklaerung": "kurz, wie man darauf kommt"}], ' +
       '"aufgaben": [6 bis 10 NEUE Übungsaufgaben genau zu den Fehlern/Themen aus "ueben", gleiche Art wie in der Arbeit, mit "thema", "hilfe" und "loesungsweg"], ' +
       this.THEMEN_JSON + '}\n\n' +
+      (art === 'diktat' ? 'DIKTAT: Liste zusätzlich jedes von der Lehrerin angestrichene Wort in "falscheWoerter": ' +
+        '[{"richtig": "richtige Schreibweise", "geschrieben": "wie das Kind es geschrieben hat", "kategorie": eine aus ' + JSON.stringify(this.KATEGORIEN) + ', ' +
+        '"tipp": "kurzer kindgerechter Tipp mit Rechtschreib-Strategie (Verlängern, Ableiten, Silben schwingen, Nomen-Probe, Merkwort)"}]. ' +
+        'Wenn die Note fehlt, aber eine Fehlerzahl dasteht, schreibe sie in "lehrerKommentar". "aufgaben" sind dann Rechtschreib-Übungen (auswahl/eingabe) mit genau diesen Wörtern.\n' : '') +
       (mathe ? F.prompts.MATHE_TYPEN() + 'Prüfe jede Lösung zweimal nach!\n' :
         'Aufgabentypen für "aufgaben": "auswahl" (genau 3 Optionen, "antwort" genau wie eine Option) oder "eingabe" (kurze Antwort). ' +
         'Bei Deutsch/Rechtschreibung gern Wörter aus der Arbeit, die falsch geschrieben waren.\n') +

@@ -561,3 +561,5 @@ ul.big-list li { font-size: 1.15rem; margin-bottom: 6px; }
 .fb-e { font-size: 1.6rem; margin-right: 8px; }
 .fb-t { margin-left: auto; font-weight: 700; color: var(--muted); }
 .ladder-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+
+.art-tag { display: inline-block; background: var(--lila-100); color: var(--lila-800); border-radius: 999px; padding: 6px 14px; font-weight: 700; }
