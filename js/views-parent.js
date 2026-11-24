@@ -17,6 +17,7 @@ F.views.parentAI = function () {
     '<div class="btn-row"><button class="btn gut" data-action="saveKey">Speichern & testen</button>' +
     '<button class="btn light" data-action="toggleKey">👁️ Anzeigen</button></div>' +
     '<p class="muted small">App-Version ' + F.VERSION + ' · <button class="btn ghost small" style="margin:0" data-action="forceUpdate">🔄 App aktualisieren</button></p>' +
+    F.aiUsageHtml() +
     '<p id="aiStatus" class="small">' + (s.model ? 'Verwendetes Modell: <b>' + F.esc(s.model) + '</b>' : '') + '</p>' +
     '<details><summary class="small" style="cursor:pointer">Erweitert: Modell selbst wählen</summary>' +
     '<label class="field mt"><span class="small">Modellname (leer = automatisch)</span><input type="text" id="aiModel" value="' + F.esc(s.model) + '" autocapitalize="off" spellcheck="false"></label>' +
@@ -365,3 +366,20 @@ F.actions.sndTest = function (el) {
 };
 
 F.actions.saveSchoolParent = function () { F.readSchoolForm(); F.toast('Gespeichert ✓'); };
+
+F.aiUsageHtml = function () {
+  var s = F.state.settings;
+  var n = s.usage && s.usage.day === F.today() ? s.usage.n : 0;
+  var b = s.blocked || {}, now = Date.now();
+  var gesperrt = Object.keys(b).filter(function (k) { return b[k] > now; });
+  return '<div class="card soft small"><b>📊 Heute:</b> ' + n + ' KI-Anfragen. ' +
+    'Das kostenlose Kontingent wird jeden Tag zurückgesetzt – bei uns gegen <b>' + F.ai.timeText(F.ai.pacificReset()).replace(/^(heute|morgen) um /, '') + '</b>.' +
+    (gesperrt.length ? '<br>Gerade pausiert: ' + gesperrt.map(function (k) { return F.esc(k) + ' (bis ' + F.ai.timeText(b[k]) + ')'; }).join(', ') +
+      '<br><button class="btn small light" style="margin-top:6px" data-action="unblockAI">Trotzdem nochmal probieren</button>' : '') + '</div>';
+};
+F.actions.unblockAI = function () {
+  F.state.settings.blocked = {};
+  F.save();
+  F.render();
+  F.toast('OK – beim nächsten Mal wird wieder probiert.');
+};

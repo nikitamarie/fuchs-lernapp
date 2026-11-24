@@ -43,13 +43,78 @@ F.ai = {
     var e;
     if (status === 400 && /api key/i.test(msg)) e = new Error('Der KI-Schlüssel stimmt nicht. Bitte unter ⚙️ Mehr → KI-Schlüssel prüfen (ganz kopiert, ohne Leerzeichen?).');
     else if (status === 403) e = new Error('Der KI-Schlüssel hat keinen Zugriff. Bitte unter ⚙️ Mehr → KI-Schlüssel einen neuen Schlüssel eintragen.');
-    else if (status === 429) e = new Error('Die kostenlose KI braucht gerade eine Pause (zu viele Anfragen oder Tageslimit erreicht). Bitte in ein paar Minuten nochmal versuchen – oder morgen.');
+    else if (status === 429) e = new Error('Die kostenlose KI braucht gerade eine Pause.');
     else if (status >= 500) e = new Error('Die KI ist gerade überlastet. Bitte gleich nochmal versuchen.');
     else e = new Error('Die KI hat nicht geantwortet (' + status + '). ' + msg);
     e.status = status;
     e.detail = msg;
     e.badKey = (status === 400 && /api key/i.test(msg)) || status === 403;
+    if (status === 429) {
+      var raw = JSON.stringify(body || '');
+      var m = raw.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/) || msg.match(/retry in ([\d.]+)\s*s/i);
+      e.retrySec = m ? Math.ceil(parseFloat(m[1])) : 0;
+      if (/limit:\s*0\b/.test(msg)) e.quota = 'none';
+      else if (/PerDay|per day|per_day/i.test(raw)) e.quota = 'day';
+      else if (/PerMinute|per minute|per_minute/i.test(raw) || (e.retrySec && e.retrySec < 120)) e.quota = 'minute';
+      else e.quota = 'day';
+    }
     return e;
+  },
+
+  /* Tageskontingent wird um Mitternacht pazifischer Zeit zurückgesetzt (bei uns ca. 9 Uhr, im Sommer ca. 9 Uhr) */
+  pacificReset: function () {
+    var now = new Date();
+    var y = now.getUTCFullYear();
+    var nthSunday = function (month, n) {           // n-ter Sonntag im Monat (UTC-Datum)
+      var d = new Date(Date.UTC(y, month, 1));
+      var first = (7 - d.getUTCDay()) % 7 + 1;
+      return Date.UTC(y, month, first + (n - 1) * 7, 10);
+    };
+    var dst = now.getTime() >= nthSunday(2, 2) && now.getTime() < nthSunday(10, 1);
+    var off = dst ? 7 : 8;                            // UTC-Stunde von Mitternacht in Kalifornien
+    var t = Date.UTC(y, now.getUTCMonth(), now.getUTCDate(), off, 1);
+    while (t <= now.getTime()) t += 86400000;
+    return t;
+  },
+  blocked: function (model) {
+    var b = (F.state.settings.blocked || {})[model];
+    return b && b > Date.now() ? b : 0;
+  },
+  block: function (model, err) {
+    var s = F.state.settings;
+    s.blocked = s.blocked || {};
+    var until = err.quota === 'minute' ? Date.now() + Math.max(30, err.retrySec || 60) * 1000 :
+      err.quota === 'none' ? Date.now() + 7 * 86400000 : this.pacificReset();
+    s.blocked[model] = until;
+    F.save();
+  },
+  timeText: function (ts) {
+    var d = new Date(ts), now = new Date();
+    var hm = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ' Uhr';
+    var same = d.toDateString() === now.toDateString();
+    var tomorrow = new Date(now.getTime() + 86400000).toDateString() === d.toDateString();
+    return (same ? 'heute um ' : tomorrow ? 'morgen um ' : F.formatDate(d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate()) + ' um ') + hm;
+  },
+  /* verständliche Meldung, wenn alle kostenlosen Modelle gerade gesperrt sind */
+  quotaError: function () {
+    var b = F.state.settings.blocked || {}, now = Date.now(), soon = 0;
+    Object.keys(b).forEach(function (k) { if (b[k] > now && (!soon || b[k] < soon)) soon = b[k]; });
+    var e;
+    if (soon && soon - now < 10 * 60000) {
+      e = new Error('Kurze Pause: Die kostenlose KI darf nur wenige Anfragen pro Minute. Bitte in ca. ' + Math.max(1, Math.ceil((soon - now) / 60000)) + ' Minute(n) nochmal versuchen.');
+    } else {
+      e = new Error('Das kostenlose KI-Kontingent für heute ist aufgebraucht. ' + (soon ? 'Ab ' + this.timeText(soon) + ' geht es wieder.' : 'Morgen früh geht es wieder.') +
+        ' Üben, Vorlesen und alle fertigen Übungen gehen trotzdem!');
+    }
+    e.status = 429;
+    e.quotaMsg = true;
+    return e;
+  },
+  countUse: function () {
+    var s = F.state.settings, d = F.today();
+    if (!s.usage || s.usage.day !== d) s.usage = { day: d, n: 0 };
+    s.usage.n++;
+    F.save();
   },
 
   /* eine Anfrage an genau ein Modell */
@@ -74,6 +139,7 @@ F.ai = {
     var timedOut = false;
     var timer = ctrl ? setTimeout(function () { timedOut = true; ctrl.abort(); }, 120000) : null;
     var opts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
+    this.countUse();
     if (ctrl) opts.signal = ctrl.signal;
 
     return fetch(this.base + '/models/' + model + ':generateContent?key=' + this.key(), opts).then(function (r) {
@@ -127,7 +193,8 @@ F.ai = {
     var tried = [];
     var log = opts.log || function () {};
     var body = null;
-    var getList = (s.model && !opts.fresh) ? Promise.resolve([s.model]) : Promise.resolve([]);
+    var usable = function (n) { return opts.fresh || !self.blocked(n); };
+    var getList = (s.model && !opts.fresh && usable(s.model)) ? Promise.resolve([s.model]) : Promise.resolve([]);
 
     return F.fitImages(images || []).then(function (imgs) {
       var parts = [{ text: prompt }];
@@ -147,12 +214,13 @@ F.ai = {
               return self.FALLBACK.slice();
             });
             return listPromise.then(function (names) {
-              queue = names.filter(function (n) { return tried.indexOf(n) < 0; }).slice(0, 10);
-              if (!queue.length) throw lastErr || new Error('Kein passendes KI-Modell gefunden.');
+              var all = names.filter(function (n) { return tried.indexOf(n) < 0; });
+              queue = all.filter(usable).slice(0, 10);
+              if (!queue.length) throw (all.length || (lastErr && lastErr.status === 429)) ? self.quotaError() : (lastErr || new Error('Kein passendes KI-Modell gefunden.'));
               return next();
             });
           }
-          throw lastErr || new Error('Kein passendes KI-Modell gefunden.');
+          throw (lastErr && lastErr.status === 429) ? self.quotaError() : (lastErr || new Error('Kein passendes KI-Modell gefunden.'));
         }
         var model = queue.shift();
         tried.push(model);
@@ -182,6 +250,11 @@ F.ai = {
           log('⚠️ ' + model + ': ' + (err.status || '') + ' ' + String(err.detail || err.message).slice(0, 140));
           // vorher gespeichertes Modell geht nicht mehr → vergessen
           if (s.model === model) { s.model = ''; F.save(); }
+          // Kontingent leer → Modell bis zum Zurücksetzen überspringen (spart Zeit und Anfragen)
+          if (err.status === 429) {
+            self.block(model, err);
+            log('   ↳ ' + (err.quota === 'minute' ? 'Minutenlimit – kurz Pause' : err.quota === 'none' ? 'kein kostenloses Kontingent' : 'Tageslimit erreicht – wieder ab ' + self.timeText(self.pacificReset())));
+          }
           // 429 heißt bei einem echten Ratenlimit oft "kurz warten" – trotzdem erst andere Modelle probieren
           if (!lastErr || lastErr.status !== 429) lastErr = err;
           return new Promise(function (res) { setTimeout(res, 500); }).then(next);
