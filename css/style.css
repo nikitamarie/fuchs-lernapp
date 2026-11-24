@@ -568,3 +568,5 @@ ul.big-list li { font-size: 1.15rem; margin-bottom: 6px; }
 .native-file { display: block; margin: 8px 0 4px; font-size: 1rem; }
 
 .toast { bottom: calc(100px + env(safe-area-inset-bottom)); }
+
+.offscreen-file { position: absolute; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; }

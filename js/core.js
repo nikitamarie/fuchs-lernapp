@@ -1,7 +1,7 @@
 /* Kern: Speicher, Navigation, Hilfsfunktionen, Belohnungen.
    Bewusst einfaches JavaScript (ohne ?. und ??), damit ältere iPads mitkommen. */
 var F = window.F = {};
-F.VERSION = '14';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
+F.VERSION = '15';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
 
 /* ---------------- Speicher ---------------- */
 F.STORE_KEY = 'fuchsapp_v1';
@@ -396,7 +396,7 @@ F.shrinkImage = function (im, maxSide, q) {
 };
 F.fitImages = function (imgs) {
   var total = function (list) { return list.reduce(function (n, im) { return n + im.data.length; }, 0); };
-  if (!imgs.length || total(imgs) < 2500000) return Promise.resolve(imgs);
+  if (!imgs.length || total(imgs) < 1800000) return Promise.resolve(imgs);
   var side = imgs.length > 3 ? 1000 : 1200;
   return Promise.all(imgs.map(function (im) { return F.shrinkImage(im, side, 0.65); }));
 };
@@ -418,14 +418,28 @@ F.aiErrorHtml = function () {
     '<p class="small muted">Für Eltern: ' + F.esc([e.status || '', e.detail || '', F.state.settings.model || ''].join(' ').trim()) + ' · Version ' + F.VERSION + '</p></div>';
 };
 
+/* Knopf, der ein verstecktes Datei-Feld öffnet. (Das unsichtbar über einen Knopf gelegte Feld
+   funktioniert auf manchen älteren iPads nicht – ein direkter Aufruf beim Antippen schon.) */
+F.fileButton = function (key, label, cls, accept, id) {
+  var fid = id || ('file-' + key);
+  return '<button type="button" class="' + (cls || 'btn') + '" data-action="pickFile" data-for="' + fid + '">' + F.esc(label) + '</button>' +
+    '<input type="file" class="offscreen-file" id="' + fid + '" accept="' + (accept || 'image/*') + '"' + (accept ? '' : ' multiple') +
+    (key ? ' data-photo-key="' + key + '"' : '') + ' tabindex="-1" aria-hidden="true">';
+};
+F.actions.pickFile = function (el) {
+  var inp = document.getElementById(el.getAttribute('data-for'));
+  if (!inp) return;
+  try { inp.value = ''; } catch (e) {}
+  inp.click();
+};
+
 /* Wiederverwendbarer Foto-Baustein: Knopf + Vorschau. Fotos landen in F.pendingImages[key]. */
 F.pendingImages = {};
 F.photoPicker = function (key, label) {
   var imgs = F.pendingImages[key] || [];
  var thumbs = imgs.map(function (im) { return '<img src="' + im.url + '" alt="Foto">'; }).join('');
   return F.aiErrorHtml() + '<div class="thumbs" id="thumbs-' + key + '">' + thumbs + '</div>' +
-    '<label class="btn big block fuchs file-btn">📷 ' + F.esc(imgs.length ? 'Noch ein Foto dazu' : (label || 'Foto machen oder auswählen')) +
-    '<input type="file" accept="image/*" multiple data-photo-key="' + key + '"></label>' +
+    F.fileButton(key, '📷 ' + (imgs.length ? 'Noch ein Foto dazu' : (label || 'Foto machen oder auswählen')), 'btn big block fuchs') +
     (imgs.length ? '<p class="small" style="color:#1d5a3d;font-weight:700">✓ ' + imgs.length + (imgs.length === 1 ? ' Foto' : ' Fotos') + ' bereit</p>' +
       '<button class="btn small light" data-action="clearPhotos" data-key="' + key + '">Fotos löschen</button>' : '') +
     '<p class="muted small">Tipp: Seite gerade und hell fotografieren. Mehrere Seiten gehen auch. ' +

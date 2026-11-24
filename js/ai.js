@@ -366,16 +366,32 @@ F.prompts = {
       '"gutGemacht": ["2 bis 5 konkrete Dinge, die das Kind schon gut kann, z. B. „Du kannst Zahlen bis 1000 sicher lesen.“"], ' +
       '"ueben": [{"thema": "was noch geübt wird (max. 4 Punkte)", "erklaerung": "kurz und kindgerecht, wie es richtig geht", "schritte": ["Schritt 1", "…"], "beispiel": "ein vorgemachtes Beispiel"}], ' +
       '"fehler": [{"aufgabe": "die Aufgabe kurz", "kindAntwort": "was das Kind geschrieben hat", "richtig": "die richtige Lösung", "erklaerung": "kurz, wie man darauf kommt"}], ' +
-      '"aufgaben": [6 bis 10 NEUE Übungsaufgaben genau zu den Fehlern/Themen aus "ueben", gleiche Art wie in der Arbeit, mit "thema", "hilfe" und "loesungsweg"], ' +
-      this.THEMEN_JSON + '}\n\n' +
+      '"hinweise": "falls etwas schwer lesbar war: kurz was, sonst leer"}\n\n' +
       (art === 'diktat' ? 'DIKTAT: Liste zusätzlich jedes von der Lehrerin angestrichene Wort in "falscheWoerter": ' +
         '[{"richtig": "richtige Schreibweise", "geschrieben": "wie das Kind es geschrieben hat", "kategorie": eine aus ' + JSON.stringify(this.KATEGORIEN) + ', ' +
         '"tipp": "kurzer kindgerechter Tipp mit Rechtschreib-Strategie (Verlängern, Ableiten, Silben schwingen, Nomen-Probe, Merkwort)"}]. ' +
-        'Wenn die Note fehlt, aber eine Fehlerzahl dasteht, schreibe sie in "lehrerKommentar". "aufgaben" sind dann Rechtschreib-Übungen (auswahl/eingabe) mit genau diesen Wörtern.\n' : '') +
-      (mathe ? F.prompts.MATHE_TYPEN() + 'Prüfe jede Lösung zweimal nach!\n' :
-        'Aufgabentypen für "aufgaben": "auswahl" (genau 3 Optionen, "antwort" genau wie eine Option) oder "eingabe" (kurze Antwort). ' +
-        'Bei Deutsch/Rechtschreibung gern Wörter aus der Arbeit, die falsch geschrieben waren.\n') +
-      'Wenn (fast) alles richtig war: "ueben" und "fehler" dürfen leer sein; erstelle dann 6 Aufgaben zum Weiter-Trainieren auf etwas schwererem Niveau.';
+        'Wenn die Note fehlt, aber eine Fehlerzahl dasteht, schreibe sie in "lehrerKommentar".\n' : '') +
+      'Halte dich kurz: höchstens 6 Fehler und 4 Übungspunkte. Wenn (fast) alles richtig war, dürfen "ueben" und "fehler" leer sein.';
+  },
+
+  /* Schritt 2 (ohne Fotos): Fehler-Übung zu einer ausgewerteten Arbeit */
+  fehlerUebung: function (fach, art, x) {
+    var mathe = fach === 'Mathe';
+    var info = {
+      thema: x.titel,
+      nochUeben: (x.ueben || []).map(function (u) { return u.thema + (u.erklaerung ? ': ' + u.erklaerung : ''); }),
+      fehler: (x.fehler || []).map(function (f) { return f.aufgabe + ' (Kind: ' + f.kindAntwort + ', richtig: ' + f.richtig + ')'; }),
+      falscheWoerter: (x.falscheWoerter || []).map(function (w) { return w.richtig; })
+    };
+    return 'Du bist eine freundliche Lehrerin in ' + F.prompts.land() + '. Ein Kind (' + F.prompts.kind() + ') hat ' +
+      (art === 'diktat' ? 'ein Diktat' : art === 'test' ? 'einen Test' : 'eine Klassenarbeit') + ' im Fach ' + fach + ' zurückbekommen. ' +
+      'Das ist dabei herausgekommen:\n' + JSON.stringify(info) + '\n\n' +
+      'Erstelle 6 bis 8 NEUE Übungsaufgaben genau zu diesen Fehlern und Themen (andere Zahlen bzw. ähnliche Wörter, gleiche Art wie in der Arbeit). ' +
+      'Wenn es keine Fehler gab: 6 Aufgaben zum Weiter-Trainieren auf etwas schwererem Niveau. Kurze, klare Aufgaben – das Kind hat Konzentrationsschwierigkeiten.\n' +
+      (art === 'diktat' ? 'DIKTAT: Rechtschreib-Übungen (auswahl/eingabe) genau mit den falsch geschriebenen Wörtern.\n' : '') +
+      (mathe ? F.prompts.MATHE_TYPEN() + 'Zu JEDER Aufgabe: "thema", "hilfe", "loesungsweg" (2–5 Schritte mit den Zahlen der Aufgabe). Prüfe jede Lösung zweimal nach!\n' :
+        'Aufgabentypen: "auswahl" (genau 3 Optionen, "antwort" genau wie eine Option) oder "eingabe" (kurze Antwort). Zu JEDER Aufgabe: "thema", "hilfe", "loesungsweg".\n') +
+      'Antworte NUR mit JSON: {"aufgaben": [ ... ], ' + this.THEMEN_JSON + '}';
   },
 
   /* nur die Themen von einer fotografierten Checkliste ablesen */

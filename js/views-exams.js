@@ -121,7 +121,7 @@ F.views.examDetail = function (p) {
     }).join('') : '<div class="card soft"><p>Noch keine Themen. Schreib auf, was in der Arbeit drankommt – oder fotografiere die Checkliste von deiner Lehrerin!</p></div>') +
     '<div class="card"><div class="btn-row" style="align-items:center"><input type="text" id="newThema" maxlength="80" placeholder="Neues Thema, z. B. Zahlen am Zahlenstrahl" style="flex:1 1 240px;margin:0 8px 10px 0">' +
     '<button class="btn gut" style="flex:0 0 auto" data-action="addThema">+ Hinzufügen</button></div>' +
-    '<label class="btn light small file-btn">📷 Checkliste fotografieren<input type="file" accept="image/*" multiple data-photo-key="examCk"></label>' +
+    F.fileButton('examCk', '📷 Checkliste fotografieren', 'btn light small') +
     ((F.pendingImages.examCk || []).length ? '<button class="btn small fuchs" data-action="themenAusFoto">🦊 Themen aus Foto übernehmen (' + F.pendingImages.examCk.length + ' Foto)</button>' : '') +
     F.aiErrorHtml() + '</div>';
 

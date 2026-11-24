@@ -207,7 +207,7 @@ F.views.parentData = function () {
     '<div class="card"><h2>💾 Sichern</h2><p>Alle Daten liegen nur auf diesem Tablet. Mach ab und zu eine Sicherung (z. B. in „Dateien“ oder per Mail an dich).</p>' +
     '<button class="btn gut" data-action="exportData">Sicherung herunterladen</button></div>' +
     '<div class="card"><h2>♻️ Wiederherstellen</h2><p>Eine Sicherungsdatei auswählen. Achtung: Ersetzt die aktuellen Daten.</p>' +
-    '<label class="btn light file-btn">Datei auswählen<input type="file" accept=".json,application/json" id="importFile"></label></div>' +
+    F.fileButton('', 'Datei auswählen', 'btn light', '.json,application/json', 'importFile') + '</div>' +
     '<div class="card"><h2>⚠️ Alles löschen</h2><button class="btn danger" data-action="resetAll">App komplett zurücksetzen</button></div>';
 };
 F.actions.exportData = function () {

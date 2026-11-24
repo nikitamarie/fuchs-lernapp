@@ -155,11 +155,8 @@ F.actions.runArbeit = function () {
         x.uebungswoerter++;
       });
     }
-    // Fehler-Übung
-    if (j.aufgaben && j.aufgaben.length) {
-      var pack = F.buildPack(j, fach, { titel: 'Fehler-Übung: ' + x.titel, quelle: 'arbeit', arbeitId: x.id });
-      if (pack) x.packId = pack.id;
-    }
+    // für die Fehler-Übung (Schritt 2) merken
+    x.falscheWoerter = (j.falscheWoerter || []).slice(0, 20).map(function (w) { return { richtig: String((w && w.richtig) || '') }; });
     F.state.arbeiten = (F.state.arbeiten || []).concat([x]);
     x.belt = F.addTore(tore, fach);
     x.belt = x.belt ? x.belt.name : '';
@@ -210,6 +207,11 @@ F.views.arbeitResult = function (p) {
         (f.erklaerung ? '<p>💡 ' + F.esc(f.erklaerung) + '</p>' : '') + '</div>';
     }).join('') + '</details>' : '');
   var pack = x.packId ? F.getPack(x.packId) : null;
+  if (!pack) {
+    html += '<div class="card fuchs center"><h2>🎯 Fehler-Übung</h2><p>' + F.esc(F.fox()) + ' macht dir Aufgaben genau zu den Sachen, die noch nicht so gut geklappt haben. ' +
+      'Schaffst du sie, bekommst du die <b>🔍 Fehler-Detektivin</b>-Auszeichnung und +15 Tore!</p>' + F.aiErrorHtml() +
+      '<button class="btn big block fuchs" data-action="makeFehlerUebung" data-id="' + x.id + '">🦊 Fehler-Übung erstellen</button></div>';
+  }
   if (pack) {
     html += '<div class="card fuchs center"><h2>🎯 Fehler-Übung</h2><p>' + F.nAufgaben(pack.aufgaben.length) + ' zu den Sachen, die noch nicht so gut geklappt haben.' +
       (x.detektiv ? ' <b>✓ Schon geschafft – du bist eine Fehler-Detektivin! 🔍</b>' : ' Schaffst du sie, bekommst du die <b>🔍 Fehler-Detektivin</b>-Auszeichnung und +15 Tore!') + '</p>' +
@@ -240,4 +242,20 @@ F.onPackFinished = function (pack, lp, pct) {
   F.save();
   setTimeout(F.confetti, 300);
   return { tore: 15, html: '<h2 class="center">Neue Auszeichnung!</h2>' + F.awardCardsHtml([g]) + '<p class="center">Du hast aus deinen Fehlern gelernt – genau so werden Champions gemacht! 🏆</p>' };
+};
+
+/* Schritt 2: Fehler-Übung erstellen (ohne die Fotos nochmal hochzuladen) */
+F.actions.makeFehlerUebung = function (el) {
+  var x = F.getArbeit(el.getAttribute('data-id'));
+  if (!x) return;
+  document.getElementById('app').innerHTML = F.loadingHtml('Fehler-Übung', F.fox() + ' denkt sich Aufgaben zu deinen Fehlern aus …');
+  F.ai.generateJSON(F.prompts.fehlerUebung(F.subject(x.fach).name, F.artOf(x), x), []).then(function (j) {
+    var pack = F.buildPack(j, x.fach, { titel: 'Fehler-Übung: ' + x.titel, quelle: 'arbeit', arbeitId: x.id, examId: x.examId || '' });
+    if (!pack) throw new Error('Da hat etwas nicht geklappt. Tipp bitte nochmal auf „Fehler-Übung erstellen“.');
+    x.packId = pack.id;
+    F.save();
+    F.render();
+    var c = document.querySelector('[data-action=startPack]');
+    if (c && c.scrollIntoView) c.scrollIntoView();
+  }).catch(function (e) { F.showAiError(e); });
 };
