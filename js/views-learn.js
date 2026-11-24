@@ -19,7 +19,7 @@ F.actions.filterSubject = function (el) {
 
 /* ---------------- Nachlesen ---------------- */
 F.allNotes = function () {
-  var own = F.state.notes.map(function (n) { return { id: n.id, fach: n.fach, titel: n.titel, text: n.text, beispiel: n.beispiel, emoji: '⭐', own: true, quelle: n.quelle }; });
+  var own = F.state.notes.map(function (n) { return { id: n.id, fach: n.fach, titel: n.titel, text: n.text, beispiel: n.beispiel, schritte: n.schritte, beispielSchritte: n.beispielSchritte, emoji: n.schritte ? '📘' : '⭐', own: true, quelle: n.quelle }; });
   return own.reverse().concat(F.BUILTIN_NOTES);
 };
 F.getNote = function (id) {
@@ -51,11 +51,20 @@ F.views.noteDetail = function (p) {
     '<div class="card"><div style="font-size:3rem">' + (n.emoji || F.subject(n.fach).emoji) + '</div>' +
     '<h1>' + F.esc(n.titel) + '</h1>' +
     '<p style="font-size:1.35rem;line-height:1.6">' + F.esc(n.text) + '</p>' +
-    (n.beispiel ? '<div class="card soft" style="margin-bottom:0"><b>Beispiel:</b><p style="font-size:1.3rem;margin:6px 0 0">' + F.esc(n.beispiel) + '</p></div>' : '') +
+    F.themeStepsHtml(n) +
+    (n.beispiel && !(n.beispielSchritte && n.beispielSchritte.length) ? '<div class="card soft" style="margin-bottom:0"><b>Beispiel:</b><p style="font-size:1.3rem;margin:6px 0 0">' + F.esc(n.beispiel) + '</p></div>' : '') +
     '</div>' +
     '<div class="btn-row"><button class="btn light" data-action="readNote" data-id="' + F.esc(n.id) + '">🔊 Vorlesen</button>' +
     (n.own ? '<button class="btn danger" data-action="deleteNote" data-id="' + F.esc(n.id) + '">🗑️ Löschen</button>' : '') + '</div>' +
     (n.quelle ? '<p class="muted small">Aus: ' + F.esc(n.quelle) + '</p>' : '');
+};
+/* Erklärung "So rechnest du" mit Schritten und durchgerechnetem Beispiel */
+F.themeStepsHtml = function (n) {
+  var h = '';
+  if (n.schritte && n.schritte.length) h += '<div class="steps-box"><b>📘 So geht’s:</b><ol>' + n.schritte.map(function (x) { return '<li>' + F.esc(x) + '</li>'; }).join('') + '</ol></div>';
+  if (n.beispielSchritte && n.beispielSchritte.length) h += '<div class="steps-box example"><b>✏️ Beispiel' + (n.beispiel ? ': ' + F.esc(n.beispiel) : '') + '</b><ol>' +
+    n.beispielSchritte.map(function (x) { return '<li>' + F.esc(x) + '</li>'; }).join('') + '</ol></div>';
+  return h;
 };
 F.actions.readNote = function (el) {
   var n = F.getNote(el.getAttribute('data-id'));
@@ -83,9 +92,10 @@ F.actions.makeNotes = function () {
   document.getElementById('app').innerHTML = F.loadingHtml('Merkkarten', F.fox() + ' schreibt Merkkarten …');
   F.ai.generateJSON(F.prompts.merkzettel(F.subject(fach).name), imgs).then(function (j) {
     F.pendingImages.note = [];
-    var karten = (j.karten || []).filter(function (k) { return k && k.text; });
+    var karten = (j.karten || []).filter(function (k) { return k && (k.text || k.schritte); });
     karten.forEach(function (k) {
-      F.state.notes.push({ id: F.uid(), fach: fach, titel: k.titel || 'Merksatz', text: k.text, beispiel: k.beispiel || '', created: Date.now(), quelle: j.titel || '' });
+      F.state.notes.push({ id: F.uid(), fach: fach, titel: k.titel || 'Merksatz', text: k.text, beispiel: k.beispiel || '',
+        schritte: F.mtask.steps({ schritte: k.schritte || [] }), beispielSchritte: F.mtask.steps({ schritte: k.beispielSchritte || [] }), created: Date.now(), quelle: j.titel || '' });
     });
     F.save();
     F.toast(karten.length + ' Merkkarten gespeichert! ⭐');
@@ -95,6 +105,7 @@ F.actions.makeNotes = function () {
 
 /* ---------------- Lernpakete (Übungen aus Fotos, alle Fächer) ---------------- */
 F.getPack = function (id) {
+  if (id === 'local' && F.tempPack) return F.tempPack;
   for (var i = 0; i < F.state.packs.length; i++) if (F.state.packs[i].id === id) return F.state.packs[i];
   return null;
 };
@@ -128,17 +139,29 @@ F.actions.makePack = function () {
   var fachEl = F.$('#packFach .chip.on');
   var fach = fachEl ? fachEl.getAttribute('data-val') : 'mathe';
   document.getElementById('app').innerHTML = F.loadingHtml('Neue Übung', F.fox() + ' denkt sich Aufgaben aus …');
-  F.ai.generateJSON(F.prompts.lernpaket(F.subject(fach).name, 12), imgs).then(function (j) {
+  var prompt = fach === 'mathe' ? F.prompts.lernpaketMathe(12) : F.prompts.lernpaket(F.subject(fach).name, 12);
+  F.ai.generateJSON(prompt, imgs).then(function (j) {
     F.pendingImages.pack = [];
-    var aufgaben = (j.aufgaben || []).filter(function (a) { return a && a.frage && a.antwort != null; }).map(function (a) {
+    var aufgaben = (j.aufgaben || []).map(function (a) {
+      if (!a) return null;
+      if (F.mtask.isMath(a)) return F.mtask.normalize(a);
+      if (!a.frage || a.antwort == null) return null;
       var typ = a.typ === 'auswahl' && a.optionen && a.optionen.length >= 2 ? 'auswahl' : 'eingabe';
       var opts = typ === 'auswahl' ? a.optionen.map(String) : [];
       if (typ === 'auswahl' && opts.indexOf(String(a.antwort)) < 0) opts.push(String(a.antwort));
-      return { typ: typ, frage: String(a.frage), optionen: opts, antwort: String(a.antwort), hilfe: String(a.hilfe || ''), erklaerung: String(a.erklaerung || '') };
-    });
+      return { typ: typ, frage: String(a.frage), optionen: opts, antwort: String(a.antwort), hilfe: String(a.hilfe || ''),
+        erklaerung: String(a.erklaerung || ''), loesungsweg: F.mtask.steps(a), thema: String(a.thema || '') };
+    }).filter(Boolean);
     if (!aufgaben.length) throw new Error('Aus diesen Fotos konnten keine Aufgaben gemacht werden. Vielleicht ein anderes Foto probieren?');
-    var pack = { id: F.uid(), fach: fach, titel: j.titel || F.subject(fach).name, aufgaben: aufgaben, created: Date.now(), best: null };
+    var themen = (j.themen || []).filter(function (t) { return t && t.titel && (t.schritte || t.erklaerung); }).map(function (t) {
+      return { titel: String(t.titel), text: String(t.erklaerung || ''), schritte: F.mtask.steps({ schritte: t.schritte || [] }),
+        beispiel: String(t.beispiel || ''), beispielSchritte: F.mtask.steps({ schritte: t.beispielSchritte || t.beispielRechnung || [] }) };
+    });
+    var pack = { id: F.uid(), fach: fach, titel: j.titel || F.subject(fach).name, aufgaben: aufgaben, themen: themen, created: Date.now(), best: null };
     F.state.packs.push(pack);
+    themen.forEach(function (t) {
+      F.state.notes.push({ id: F.uid(), fach: fach, titel: t.titel, text: t.text, schritte: t.schritte, beispiel: t.beispiel, beispielSchritte: t.beispielSchritte, created: Date.now(), quelle: pack.titel });
+    });
     (j.merkkarten || []).forEach(function (k) {
       if (k && k.text) F.state.notes.push({ id: F.uid(), fach: fach, titel: k.titel || 'Merksatz', text: k.text, beispiel: k.beispiel || '', created: Date.now(), quelle: pack.titel });
     });
@@ -156,10 +179,20 @@ F.views.packDetail = function (p) {
     '<div class="card center"><div style="font-size:3rem">' + s.emoji + '</div><h1>' + F.esc(x.titel) + '</h1>' +
     '<p>' + x.aufgaben.length + ' Aufgaben · in ' + rounds + (rounds === 1 ? ' kurzen Runde' : ' kurzen Runden') + ' zu je 5</p>' +
     (x.best != null ? '<p class="muted">Dein bestes Ergebnis: ' + x.best + '%</p>' : '') + '</div>' +
+    ((x.themen && x.themen.length) ? F.goBtn('packThemes', { id: x.id }, '📘 Erst erklären lassen: So geht’s', 'btn big block light') : '') +
     '<button class="btn big block fuchs" data-action="startPack" data-id="' + x.id + '" data-mode="runde">🎯 Trainingsrunde (5 Aufgaben)</button>' +
     '<button class="btn big block" data-action="startPack" data-id="' + x.id + '" data-mode="probe">📋 Probe-Klassenarbeit (alle Aufgaben)</button>' +
     '<p class="muted small center">Bei der Probe-Klassenarbeit gibt es erst am Ende die Auswertung – wie in echt. Aber ohne Zeitdruck!</p>' +
     '<div class="btn-row mt"><button class="btn danger small" data-action="deletePack" data-id="' + x.id + '">🗑️ Übung löschen</button></div>';
+};
+F.views.packThemes = function (p) {
+  var x = F.getPack(p.id);
+  if (!x) return F.topbar('Erklärung') + '<p>Nicht gefunden.</p>';
+  var cards = (x.themen || []).map(function (t) {
+    return '<div class="card"><h2>' + F.esc(t.titel) + '</h2>' + (t.text ? '<p style="font-size:1.2rem">' + F.esc(t.text) + '</p>' : '') + F.themeStepsHtml(t) + '</div>';
+  }).join('');
+  return F.topbar('So geht’s') + (cards || '<p>Keine Erklärung vorhanden.</p>') +
+    '<button class="btn big block light" data-action="back">Verstanden – zurück</button>';
 };
 F.actions.deletePack = function (el) {
   if (!confirm('Diese Übung löschen?')) return;
@@ -174,7 +207,7 @@ F.actions.startPack = function (el) {
   var mode = el.getAttribute('data-mode');
   var list = mode === 'probe' ? x.aufgaben.slice() : F.shuffle(x.aufgaben).slice(0, 5);
   F.lp = { packId: x.id, mode: mode, list: list.map(function (a) { return { a: a, opts: a.typ === 'auswahl' ? F.shuffle(a.optionen) : null }; }),
-    idx: 0, richtig: 0, state: 'frage', hintShown: false, tries: 0, results: [] };
+    idx: 0, richtig: 0, state: 'frage', hintShown: false, tries: 0, results: [], f: {}, af: null, marks: {}, satz: '' };
   F.go('packPlay', {});
 };
 
@@ -205,8 +238,15 @@ F.views.packPlay = function () {
   if (lp.state === 'feedback') {
     return html + lp.fbHtml + '<button class="btn big block gut" data-action="lpNext">Weiter ›</button></div>';
   }
-  html += '<p class="small muted">Aufgabe ' + (lp.idx + 1) + ' von ' + lp.list.length + '</p>' +
-    '<p class="prompt">' + F.esc(a.frage) + '</p>';
+  html += '<p class="small muted">Aufgabe ' + (lp.idx + 1) + ' von ' + lp.list.length + '</p>';
+  if (F.mtask.isMath(a)) {
+    html += F.mtask.render(a, lp);
+    if (lp.hintShown && a.hilfe) html += '<div class="feedback fast"><span class="fb-title">💡 Tipp</span>' + F.esc(a.hilfe) + '</div>';
+    else if (a.hilfe && lp.mode !== 'probe') html += '<button class="btn light small" data-action="lpHint">💡 Ich brauche einen Tipp</button>';
+    if (lp.mode !== 'probe' && x.themen && x.themen.length) html += F.goBtn('packThemes', { id: x.id }, '📘 Wie ging das nochmal?', 'btn light small');
+    return html + '</div>';
+  }
+  html += '<p class="prompt">' + F.esc(a.frage) + '</p>';
   if (a.typ === 'auswahl') {
     html += '<div class="options">' + item.opts.map(function (o) {
       return '<button class="option ' + (o.length > 18 ? 'text-left' : '') + '" data-action="lpPick" data-val="' + F.esc(o) + '">' + F.esc(o) + '</button>';
@@ -223,13 +263,46 @@ F.views.packPlay = function () {
 };
 F.actions.lpHint = function () { F.lp.hintShown = true; F.render(); };
 
+/* Mathe-Aufgabe abgeben */
+F.actions.mfDone = function () {
+  var lp = F.lp, a = lp.list[lp.idx].a;
+  var r = F.mtask.check(a, lp);
+  if (r.empty) { F.toast('Trag zuerst dein Ergebnis ein 🙂'); return; }
+  var lob = function () { return '<div class="big-emoji pop">' + F.rand(['⚽', '🥊', '🦊', '🐶', '⭐', '🤾‍♀️']) + '</div>'; };
+  if (lp.mode === 'probe') {
+    lp.results.push({ frage: a.frage, given: r.given, ok: r.ok, a: a });
+    if (r.ok) lp.richtig++;
+    F.actions.lpNext();
+    return;
+  }
+  if (r.ok) {
+    if (lp.tries === 0) lp.richtig++;
+    lp.fbHtml = lob() + '<div class="feedback gut"><span class="fb-title">' + F.rand(F.LOB) + '</span>' + F.mtask.solutionHtml(a) +
+      (r.extra ? '<div class="small">' + F.esc(r.extra) + '</div>' : '') +
+      (a.typ === 'sachaufgabe' && r.noSatz && a.antwortsatz ? '<div class="small mt">So kann dein Antwortsatz aussehen: <i>' + F.esc(a.antwortsatz) + '</i></div>' : '') +
+      '</div>' + (a.loesungsweg && a.loesungsweg.length ? '<details class="mt" style="text-align:left"><summary>📘 Rechenweg ansehen</summary>' + F.mtask.stepsHtml(a) + '</details>' : '');
+    lp.state = 'feedback';
+  } else if (lp.tries === 0) {
+    lp.tries = 1;
+    lp.hintShown = true;
+    F.toast(r.msg || 'Fast! Schau dir den Tipp an und probier es nochmal 🦊', 4500);
+    F.render();
+    return;
+  } else {
+    lp.fbHtml = '<div class="feedback fast"><span class="fb-title">' + F.rand(F.FAST) + '</span>So ist es richtig:' + F.mtask.solutionHtml(a) + '</div>' +
+      F.mtask.stepsHtml(a);
+    lp.state = 'feedback';
+  }
+  F.render();
+};
+
 F.lpAnswer = function (given) {
   var lp = F.lp;
   var x = F.getPack(lp.packId);
   var a = lp.list[lp.idx].a;
   var res = F.lpCheck(given, a.antwort, x.fach);
   if (lp.mode === 'probe') {
-    lp.results.push({ frage: a.frage, given: given, antwort: a.antwort, ok: res === 'ok', erklaerung: a.erklaerung });
+    lp.results.push({ frage: a.frage, given: given, antwort: a.antwort, ok: res === 'ok', erklaerung: a.erklaerung, steps: a.loesungsweg });
     if (res === 'ok') lp.richtig++;
     F.actions.lpNext();
     return;
@@ -250,7 +323,8 @@ F.lpAnswer = function (given) {
   } else {
     lp.fbHtml = '<div class="feedback fast"><span class="fb-title">' + F.rand(F.FAST) + '</span>' +
       'Richtig ist: <span class="fb-word">' + F.esc(a.antwort) + '</span>' +
-      (a.erklaerung ? '<div><b>So geht’s:</b> ' + F.esc(a.erklaerung) + '</div>' : '') + '</div>';
+      (a.erklaerung ? '<div><b>So geht’s:</b> ' + F.esc(a.erklaerung) + '</div>' : '') + '</div>' +
+      (a.loesungsweg && a.loesungsweg.length ? F.mtask.stepsHtml(a) : '');
     lp.state = 'feedback';
   }
   F.render();
@@ -263,8 +337,10 @@ F.actions.lpType = function () {
 };
 F.actions.lpNext = function () {
   var lp = F.lp;
+  F.hideToast();
   lp.idx++;
   lp.state = 'frage'; lp.hintShown = false; lp.tries = 0;
+  lp.f = {}; lp.af = null; lp.marks = {}; lp.satz = '';
   if (lp.idx >= lp.list.length) {
     var x = F.getPack(lp.packId);
     var pct = Math.round(lp.richtig / lp.list.length * 100);
@@ -275,17 +351,19 @@ F.actions.lpNext = function () {
     if (lp.mode === 'probe') {
       var wrong = lp.results.filter(function (r) { return !r.ok; });
       extra = wrong.length ? '<h2>Das schauen wir uns nochmal an:</h2>' + wrong.map(function (r) {
+        if (r.a) return '<div class="err-card"><p><b>' + F.esc(r.frage) + '</b></p><div class="small muted">Deine Antwort: ' + F.esc(r.given) + '</div>' +
+          F.mtask.solutionHtml(r.a) + F.mtask.stepsHtml(r.a) + '</div>';
         return '<div class="err-card"><p><b>' + F.esc(r.frage) + '</b></p>' +
           '<div class="small muted">Deine Antwort: ' + F.esc(r.given) + '</div>' +
           '<div class="correct">' + F.esc(r.antwort) + '</div>' +
-          (r.erklaerung ? '<p>💡 ' + F.esc(r.erklaerung) + '</p>' : '') + '</div>';
+          (r.erklaerung ? '<p>💡 ' + F.esc(r.erklaerung) + '</p>' : '') + (r.steps && r.steps.length ? F.mtask.stepsHtml({ loesungsweg: r.steps }) : '') + '</div>';
       }).join('') : '';
     }
     F.finishRound({
       titel: lp.mode === 'probe' ? 'Probe-Klassenarbeit geschafft!' : 'Runde geschafft!',
       text: lp.richtig + ' von ' + lp.list.length + ' richtig' + (lp.mode === 'probe' ? ' (' + pct + '%).' : ' beim ersten Versuch.'),
       tore: lp.richtig + (lp.mode === 'probe' ? 5 : 2),
-      again: null,
+      again: x.id === 'local' ? { view: 'matheLocal', params: { typ: x.localTyp } } : null,
       extraHtml: extra
     });
     return;

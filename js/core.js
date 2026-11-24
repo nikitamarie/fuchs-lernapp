@@ -1,7 +1,7 @@
 /* Kern: Speicher, Navigation, Hilfsfunktionen, Belohnungen.
    Bewusst einfaches JavaScript (ohne ?. und ??), damit ältere iPads mitkommen. */
 var F = window.F = {};
-F.VERSION = '6';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
+F.VERSION = '7';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
 
 /* ---------------- Speicher ---------------- */
 F.STORE_KEY = 'fuchsapp_v1';
@@ -93,6 +93,11 @@ F.formatDate = function (iso) {
   return tage[d.getDay()] + ', ' + (+p[2]) + '.' + (+p[1]) + '.';
 };
 
+F.hideToast = function () {
+  clearTimeout(F._toastTimer);
+  var t = document.getElementById('toast');
+  if (t) t.className = 'toast';
+};
 F.toast = function (msg, ms) {
   var t = document.getElementById('toast');
   t.textContent = msg;
@@ -123,6 +128,7 @@ F.current = null;
 F.go = function (name, params, opts) {
   opts = opts || {};
   if (F.speech) F.speech.stop();
+  F.hideToast();
   if (F.current && !opts.replace) F.history.push(F.current);
   F.current = { name: name, params: params || {} };
   F.render();

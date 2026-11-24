@@ -151,6 +151,7 @@ F.actions.trSelf = function (el) {
 };
 F.actions.trNext = function () {
   var tr = F.tr;
+  F.hideToast();
   tr.idx++;
   tr.state = 'frage';
   tr.revealed = false;

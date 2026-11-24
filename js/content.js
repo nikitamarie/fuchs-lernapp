@@ -46,9 +46,20 @@ F.BUILTIN_NOTES = [
   { id: 'm-nachbar', fach: 'mathe', titel: 'Vorgänger und Nachfolger', emoji: '👣',
     text: 'Der Vorgänger ist 1 weniger, der Nachfolger ist 1 mehr.',
     beispiel: '499 ← 500 → 501' },
+  { id: 'm-schriftlich', fach: 'mathe', titel: 'So rechnest du schriftlich plus', emoji: '🧾',
+    text: 'Beim schriftlichen Addieren schreibst du die Zahlen untereinander und rechnest Stelle für Stelle – von rechts nach links.',
+    schritte: ['Schreibe die Zahlen genau untereinander: Einer unter Einer, Zehner unter Zehner, Hunderter unter Hunderter.',
+      'Ziehe einen Strich darunter.', 'Fang rechts bei den Einern an und rechne sie zusammen.',
+      'Ist das Ergebnis 10 oder mehr: Schreibe nur den Einer hin. Den Zehner schreibst du klein als Übertrag in die nächste Spalte.',
+      'Rechne die Zehner zusammen – und den Übertrag dazu. Dann die Hunderter genauso.'],
+    beispiel: '456 + 278',
+    beispielSchritte: ['Einer: 6 + 8 = 14. Schreibe 4, Übertrag 1.', 'Zehner: 5 + 7 + 1 = 13. Schreibe 3, Übertrag 1.', 'Hunderter: 4 + 2 + 1 = 7. Schreibe 7.', 'Ergebnis: 456 + 278 = 734'] },
   { id: 'm-plus', fach: 'mathe', titel: 'Rechnen mit Hundertern und Zehnern', emoji: '➕',
-    text: 'Rechne erst mit den kleinen Zahlen und hänge die Nullen an.',
-    beispiel: '300 + 400: 3 + 4 = 7 → 700  ·  450 + 30: 45 + 3 = 48 → 480' }
+    text: 'Rechne Stelle für Stelle: Hunderter mit Hundertern, Zehner mit Zehnern, Einer mit Einern.',
+    schritte: ['Schau, welche Stellen sich ändern: Hunderter, Zehner oder Einer?', 'Rechne nur diese Stelle: 3 H + 4 H = 7 H.', 'Die anderen Stellen bleiben gleich.',
+      'Fehlt eine Zahl (☐)? Dann rechne rückwärts mit der Umkehraufgabe.'],
+    beispiel: '450 + 30',
+    beispielSchritte: ['Die Hunderter bleiben: 4 H.', 'Zehner: 5 Z + 3 Z = 8 Z.', 'Einer bleiben: 0 E.', 'Ergebnis: 450 + 30 = 480'] }
 ];
 
 /* Wichtige Wörter beim Fehler-Muster für Eltern erklären */

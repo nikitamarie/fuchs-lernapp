@@ -472,3 +472,40 @@ ol.steps { padding-left: 24px; }
 ol.steps li { margin-bottom: 8px; }
 code { background: var(--lila-100); padding: 2px 6px; border-radius: 6px; font-size: 0.9em; }
 a { color: var(--lila-700); }
+
+/* ---------- Mathe wie in der Mathearbeit ---------- */
+.mline { font-size: 2.1rem; font-weight: 800; color: var(--lila-900); margin: 8px 0 14px; letter-spacing: 0.02em; }
+.mline.sol { color: var(--gut); font-size: 1.8rem; margin: 6px 0; }
+.paeckchen { display: inline-block; text-align: left; background: #fff; border-radius: 20px; box-shadow: var(--shadow); padding: 10px 22px; margin-bottom: 16px; }
+.paeckchen .mline { font-size: 1.8rem; margin: 6px 0; }
+.mfield {
+  display: inline-block; min-width: 96px; height: 60px; vertical-align: middle;
+  margin: 0 6px; padding: 0 10px; border-radius: 14px; border: 3px dashed var(--lila-300);
+  background: #fff; color: var(--lila-900); font: inherit; font-size: 1.8rem; font-weight: 800; cursor: pointer;
+}
+.mfield.on { border-style: solid; border-color: var(--fuchs); background: #fff8f2; box-shadow: 0 0 0 4px rgba(233,120,47,0.15); }
+.mfield.ok { border-style: solid; border-color: var(--gut); background: var(--gut-hell); }
+.mfield.no { border-style: solid; border-color: #e2b45a; background: var(--hinweis-hell); }
+.mfield.digit { min-width: 0; width: 52px; height: 58px; margin: 0; padding: 0; font-size: 1.8rem; }
+.mfield.carry { min-width: 0; width: 34px; height: 30px; margin: 0; padding: 0; font-size: 1rem; border-width: 2px; }
+.mfield.wide { min-width: 220px; text-align: left; }
+.schriftlich { border-collapse: separate; border-spacing: 4px; margin: 0 auto 16px; background: #fff; border-radius: 18px; box-shadow: var(--shadow); padding: 8px 14px;
+  background-image: linear-gradient(var(--lila-100) 1px, transparent 1px), linear-gradient(90deg, var(--lila-100) 1px, transparent 1px); background-size: 14px 14px; }
+.schriftlich th { font-size: 0.85rem; color: var(--muted); height: 22px; }
+.schriftlich td { width: 54px; height: 58px; text-align: center; font-size: 1.9rem; font-weight: 800; color: var(--lila-900); }
+.schriftlich td.op { width: 34px; color: var(--fuchs); }
+.schriftlich tr.carry td { height: 32px; }
+.schriftlich tr.result td { border-top: 4px solid var(--lila-800); padding-top: 4px; }
+.schriftlich td.sol { color: var(--gut); }
+.sach { text-align: left; }
+.sach-row { display: flex; flex-wrap: wrap; align-items: center; }
+.sach-lbl { font-weight: 800; color: var(--lila-800); margin-right: 6px; }
+.sach-eq { font-size: 1.8rem; font-weight: 800; color: var(--lila-900); margin: 0 4px; }
+.keypad.ops { grid-template-columns: 1fr 1fr 1fr 1fr; max-width: 460px; }
+.keypad .opk { background: var(--fuchs-hell); color: #8a3f0f; }
+.steps-box { text-align: left; background: #eef6ff; border-radius: 18px; padding: 14px 18px; margin: 10px 0 14px; color: #1f3b5c; }
+.steps-box.example { background: var(--fuchs-hell); color: #5a2a08; }
+.steps-box ol { margin: 6px 0 0; padding-left: 24px; }
+.steps-box li { margin-bottom: 6px; font-size: 1.1rem; }
+details summary { cursor: pointer; font-weight: 700; color: var(--lila-800); }
+@media (max-width: 520px) { .mline { font-size: 1.6rem; } .mfield { min-width: 76px; } .schriftlich td { width: 44px; } .mfield.digit { width: 42px; } }

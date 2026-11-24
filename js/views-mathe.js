@@ -35,6 +35,63 @@ F.mathe.TYPES = [
   { id: 'vergleich', name: 'Größer oder kleiner?', emoji: '🐊', sub: '<, > oder =' },
   { id: 'rechnen', name: 'Rechnen bis 1000', emoji: '➕', sub: 'Mit Hundertern und Zehnern' }
 ];
+/* Übungen im "Mathearbeit-Format" (Felder zum Eintragen) */
+F.mathe.LOCAL = [
+  { id: 'paeckchen', name: 'Päckchen rechnen', emoji: '📦', sub: 'Wie im Heft: mehrere Aufgaben untereinander, auch mit Lücke' },
+  { id: 'schriftlich', name: 'Schriftlich addieren', emoji: '🧾', sub: 'Untereinander schreiben und mit Übertrag rechnen' }
+];
+F.mathe.makeLocal = function (typ) {
+  var tasks = [];
+  var i;
+  if (typ === 'paeckchen') {
+    for (i = 0; i < 4; i++) {
+      var rows = [], steps = [];
+      var kinds = F.shuffle(['hh+', 'hz+z', 'hz-z', 'hze+e', 'hh-', 'luecke']);
+      for (var r = 0; r < 4; r++) {
+        var q = F.mathe.make('rechnen');
+        var m = q.bild.match(/>([^<]*) = \?</);
+        var auf = m ? m[1].replace(/&nbsp;/g, ' ') : '';
+        if (!auf) continue;
+        var row = auf + ' = _';
+        if (kinds[r] === 'luecke' && /^\d+ [+−] \d+$/.test(auf)) {
+          var p2 = auf.split(' ');
+          row = p2[0] + ' ' + p2[1] + ' _ = ' + q.antwort;
+          rows.push({ aufgabe: row, antwort: p2[2] });
+          steps.push(row.replace('_', '☐') + ': Rechne mit der Umkehraufgabe: ' +
+            (p2[1] === '+' ? q.antwort + ' − ' + p2[0] : p2[0] + ' − ' + q.antwort) + ' = ' + p2[2] + '.');
+        } else {
+          rows.push({ aufgabe: row, antwort: q.antwort });
+          steps.push(auf + ': ' + q.erklaerung.replace(/<[^>]+>/g, ' '));
+        }
+      }
+      tasks.push({ typ: 'paeckchen', frage: 'Rechne das Päckchen.', zeilen: rows, hilfe: 'Rechne erst mit den Hundertern, dann mit den Zehnern und Einern.', loesungsweg: steps });
+    }
+  } else {
+    for (i = 0; i < 4; i++) {
+      var a, b;
+      do { a = F.randInt(105, 689); b = F.randInt(105, 999 - a); } while ((a % 10) + (b % 10) < 10 && Math.random() < 0.7);
+      var z = [String(a), String(b)];
+      tasks.push({ typ: 'schriftlich', frage: i % 2 ? 'Schreibe untereinander und rechne schriftlich: ' + a + ' + ' + b : 'Rechne schriftlich.',
+        operator: '+', zahlen: z, antwort: String(a + b), aufschreiben: i % 2 === 1,
+        hilfe: 'Fang rechts bei den Einern an. Ist das Ergebnis 10 oder mehr, schreibst du den Einer hin und merkst dir den Zehner als Übertrag.',
+        loesungsweg: F.mtask.addSteps(z) });
+    }
+  }
+  var note = null;
+  for (i = 0; i < F.BUILTIN_NOTES.length; i++) if (F.BUILTIN_NOTES[i].id === (typ === 'schriftlich' ? 'm-schriftlich' : 'm-plus')) note = F.BUILTIN_NOTES[i];
+  F.tempPack = { id: 'local', localTyp: typ, fach: 'mathe', titel: typ === 'schriftlich' ? 'Schriftlich addieren' : 'Päckchen', aufgaben: tasks,
+    themen: note ? [note] : [], best: null };
+  F.lp = { packId: 'local', mode: 'runde', list: tasks.map(function (t) { return { a: t, opts: null }; }),
+    idx: 0, richtig: 0, state: 'frage', hintShown: false, tries: 0, results: [], f: {}, af: null, marks: {}, satz: '' };
+};
+F.actions.startLocalMathe = function (el) {
+  F.mathe.makeLocal(el.getAttribute('data-typ'));
+  F.go('packPlay', {});
+};
+F.views.matheLocal = function (p) {
+  setTimeout(function () { F.mathe.makeLocal(p.typ); F.go('packPlay', {}, { replace: true }); }, 0);
+  return '';
+};
 
 F.mathe.make = function (typ) {
   var n, d, t;
@@ -131,6 +188,12 @@ F.views.matheHome = function () {
     '<button class="tile wichtig wide mb" data-action="startMathe" data-typ="mix">' +
     '<span class="emoji">🎯</span><span class="label">Trainingseinheit: gemischt</span><span class="sub">6 Aufgaben von allem etwas</span></button>' +
     items +
+    '<h2 class="mt">Wie in der Mathearbeit</h2>' +
+    F.mathe.LOCAL.map(function (t) {
+      return '<button class="list-item" data-action="startLocalMathe" data-typ="' + t.id + '">' +
+        '<span class="li-emoji">' + t.emoji + '</span><span class="li-main"><span class="li-title">' + t.name + '</span>' +
+        '<span class="li-sub">' + t.sub + '</span></span><span class="li-arrow">›</span></button>';
+    }).join('') +
     '<div class="card soft mt"><p>📷 Neue Mathe-Themen aus der Schule? Unter <b>„Üben mit Fotos“</b> macht ' + F.esc(F.fox()) + ' Aufgaben aus deinen Arbeitsblättern.</p></div>';
 };
 
@@ -194,6 +257,7 @@ F.mtAnswer = function (val) {
 };
 F.actions.mtNext = function () {
   var mt = F.mt;
+  F.hideToast();
   mt.idx++; mt.tries = 0; mt.input = ''; mt.hint = false; mt.state = 'frage';
   if (mt.idx >= mt.list.length) {
     F.mt = null;

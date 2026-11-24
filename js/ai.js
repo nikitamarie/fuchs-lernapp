@@ -254,11 +254,19 @@ F.prompts = {
 
   merkzettel: function (fach) {
     return 'Du hilfst einem 8-jährigen Kind (3. Klasse, Grundschule Niedersachsen) beim Lernen. Fach: ' + fach + '.\n' +
-      'Auf den Fotos sind Seiten aus Mappe, Arbeitsblatt oder Schulbuch. Fasse die wichtigsten Regeln, Merksätze, Begriffe und Lösungswege ' +
-      'als kurze Merkkarten zusammen. Sehr einfache Sprache, kurze Sätze, ermutigend. Bei Mathe: Lösungsweg Schritt für Schritt mit Beispiel.\n' +
-      'Antworte NUR mit JSON: {"titel": "Thema, max. 5 Wörter", "karten": [{"titel": "kurzer Titel", "text": "höchstens 3 kurze Sätze", "beispiel": "ein Beispiel"}]}\n' +
-      'Erstelle 2 bis 8 Karten. Nichts erfinden, was nicht zum Inhalt passt.';
+      'Auf den Fotos sind Seiten aus Mappe, Arbeitsblatt oder Schulbuch. Erkläre die Themen so, dass das Kind sie selbst anwenden kann. ' +
+      'WICHTIG: Keine reinen Begriffs-Definitionen! Erkläre, WIE man vorgeht (bei Mathe: wie man solche Aufgaben rechnet, Schritt für Schritt), ' +
+      'und rechne/zeige ein Beispiel komplett vor. Nutze genau die Methode und Schreibweise, die auf den Fotos zu sehen ist. ' +
+      'Sehr einfache Sprache, kurze Sätze, ermutigend.\n' +
+      'Antworte NUR mit JSON: {"titel": "Thema, max. 5 Wörter", "karten": [{"titel": "z. B. So rechnest du …", ' +
+      '"text": "1–2 kurze Sätze: Worum geht es?", "schritte": ["Schritt 1 …", "Schritt 2 …"], ' +
+      '"beispiel": "die Beispielaufgabe, z. B. 456 + 237", "beispielSchritte": ["vorgerechneter Schritt 1 mit den Zahlen des Beispiels", "…", "Ergebnis: …"]}]}\n' +
+      'Erstelle 2 bis 6 Karten. Nichts erfinden, was nicht zum Inhalt passt.';
   },
+
+  THEMEN_JSON: '"themen": [{"titel": "So rechnest du … / So geht …", "erklaerung": "1–2 kurze Sätze, worum es geht", ' +
+    '"schritte": ["3 bis 6 kurze Schritte: WIE man solche Aufgaben löst"], "beispiel": "eine Beispielaufgabe", ' +
+    '"beispielSchritte": ["das Beispiel komplett vorgerechnet, Schritt für Schritt, mit Ergebnis"]}]',
 
   lernpaket: function (fach, anzahl) {
     return 'Du bist eine freundliche Grundschul-Lehrerin in Niedersachsen und bereitest ein 8-jähriges Kind (3. Klasse) auf eine Klassenarbeit vor. Fach: ' + fach + '.\n' +
@@ -266,11 +274,42 @@ F.prompts = {
       '(ähnlich wie in einer Klassenarbeit, aber nicht dieselben Aufgaben abschreiben). Altersgerecht, kurze Fragen, eindeutige Antworten. ' +
       'Beginne leicht und werde langsam etwas schwerer. Das Kind hat Konzentrationsschwierigkeiten: eine Sache pro Aufgabe, keine langen Texte.\n' +
       'Aufgabentypen: "auswahl" (genau 3 Antwortmöglichkeiten, eine richtig) oder "eingabe" (kurze Antwort: eine Zahl oder ein einzelnes Wort). ' +
-      'Bei Mathe meistens "eingabe" mit einer Zahl als Antwort. Bei Englisch: Wörter, einfache Sätze, Bedeutungen.\n' +
-      'Zu jeder Aufgabe: "hilfe" = ein kleiner Tipp, der hilft OHNE die Lösung zu verraten (bei Mathe gern ein Bild in Worten, z. B. mit Hundertern, Zehnern, Einern), ' +
-      '"erklaerung" = kurze Schritt-für-Schritt-Erklärung der Lösung (max. 3 kurze Sätze).\n' +
+      'Bei Englisch: Wörter, einfache Sätze, Bedeutungen.\n' +
+      'Zu jeder Aufgabe: "hilfe" = ein kleiner Tipp, der hilft OHNE die Lösung zu verraten; ' +
+      '"loesungsweg" = 2 bis 4 kurze Schritte, wie man auf GENAU DIESE Lösung kommt (z. B. „Suche das Wort, das man tun kann …“). Keine reine Begriffs-Definition!\n' +
+      'Zusätzlich "themen": Erkläre jedes Thema der Fotos so, dass das Kind solche Aufgaben selbst lösen kann (Vorgehen in Schritten + vorgemachtes Beispiel).\n' +
       'Antworte NUR mit JSON: {"titel": "Thema, max. 5 Wörter", ' +
-      '"aufgaben": [{"typ": "auswahl" oder "eingabe", "frage": "...", "optionen": ["...", "...", "..."] (nur bei auswahl), "antwort": "die richtige Antwort, genau wie in optionen", "hilfe": "...", "erklaerung": "..."}], ' +
-      '"merkkarten": [{"titel": "...", "text": "höchstens 3 kurze Sätze", "beispiel": "..."}]}';
+      '"aufgaben": [{"typ": "auswahl" oder "eingabe", "frage": "...", "optionen": ["...", "...", "..."] (nur bei auswahl), "antwort": "die richtige Antwort, genau wie in optionen", ' +
+      '"hilfe": "...", "loesungsweg": ["...", "..."]}], ' + this.THEMEN_JSON + '}';
+  },
+
+  lernpaketMathe: function (anzahl) {
+    return 'Du bist eine freundliche Grundschul-Lehrerin in Niedersachsen und bereitest ein 8-jähriges Kind (3. Klasse) auf eine MATHEARBEIT vor.\n' +
+      'Auf den Fotos sind Seiten aus Mappe, Arbeitsheft oder Schulbuch (z. B. „Flex und Flo“). Schau genau hin: Welche Themen und welche Aufgabenformate sind zu sehen? ' +
+      'Erstelle daraus ' + anzahl + ' NEUE Aufgaben im GLEICHEN Format wie auf den Fotos (andere Zahlen, gleicher Schwierigkeitsgrad, Zahlenraum wie auf den Fotos, meist bis 1000). ' +
+      'Beginne leicht, werde langsam schwerer. Das Kind hat Konzentrationsschwierigkeiten: kurze, klare Aufgaben.\n\n' +
+      'Benutze diese Aufgabentypen (Rechenzeichen immer: + − · :  und für die Lücke einen Unterstrich _ ):\n' +
+      '1. "rechnung": eine Rechnung mit EINER Lücke, die das Kind ausfüllt. Die Lücke kann am Ende oder in der Mitte stehen. ' +
+      'Beispiel: {"typ":"rechnung","frage":"Rechne.","aufgabe":"345 + 230 = _","antwort":"575"} oder {"typ":"rechnung","frage":"Ergänze.","aufgabe":"345 + _ = 575","antwort":"230"}\n' +
+      '2. "paeckchen": 3 bis 5 zusammengehörende Rechnungen wie ein Päckchen im Heft (gern „schöne Päckchen“ mit Muster). ' +
+      'Beispiel: {"typ":"paeckchen","frage":"Rechne das Päckchen. Was fällt dir auf?","zeilen":[{"aufgabe":"300 + 200 = _","antwort":"500"},{"aufgabe":"310 + 200 = _","antwort":"510"}]}\n' +
+      '3. "schriftlich": schriftlich rechnen in Spalten (nur wenn schriftliches Rechnen auf den Fotos vorkommt). ' +
+      '"aufschreiben": true heißt, das Kind muss die Zahlen selbst richtig untereinander schreiben. ' +
+      'Beispiel: {"typ":"schriftlich","frage":"Rechne schriftlich.","operator":"+","zahlen":["456","278"],"antwort":"734","aufschreiben":false}\n' +
+      '4. "sachaufgabe": eine kurze Text-Aufgabe (max. 3 Sätze, Alltag eines Kindes, z. B. Handball, Kickboxen, Tiere, Einkaufen). ' +
+      'Das Kind schreibt Rechnung, Ergebnis und Antwortsatz. Beispiel: {"typ":"sachaufgabe","frage":"Im Verein sind 124 Kinder. 38 spielen Handball. Wie viele machen etwas anderes?",' +
+      '"rechnung":"124 − 38 = 86","antwort":"86","einheit":"Kinder","antwortsatz":"86 Kinder machen etwas anderes."}\n' +
+      '5. "auswahl": nur für Aufgaben, bei denen man wirklich auswählt (z. B. <, > oder =; welche Zahl ist größer). Genau 3 Optionen, "antwort" genau wie eine Option.\n\n' +
+      'Mische die Typen passend zu den Fotos (vor allem rechnung, paeckchen und – falls auf den Fotos – schriftlich und sachaufgabe).\n' +
+      'Zu JEDER Aufgabe:\n' +
+      '- "hilfe": ein kleiner Tipp, ohne die Lösung zu verraten (z. B. „Rechne erst die Hunderter.“)\n' +
+      '- "loesungsweg": 2 bis 5 kurze Schritte, wie man GENAU DIESE Aufgabe rechnet – mit den Zahlen der Aufgabe (z. B. ["300 + 200 = 500", "45 + 30 = 75", "500 + 75 = 575"]). ' +
+      'KEINE Begriffserklärungen wie „Addieren heißt plus rechnen“, sondern der Rechenweg. Nutze die Rechenwege/Strategien, die auf den Fotos zu sehen sind ' +
+      '(z. B. Stellenwerte, schrittweise, Hilfsaufgabe, Umkehraufgabe, beim schriftlichen Rechnen den Übertrag).\n' +
+      '- "thema": kurzer Name des Themas.\n' +
+      'Prüfe jede Lösung zweimal nach – sie muss stimmen!\n\n' +
+      'Zusätzlich "themen": Für jedes Thema auf den Fotos eine Erklärung „So rechnest du …“: wie man solche Aufgaben Schritt für Schritt löst, ' +
+      'und ein komplett vorgerechnetes Beispiel. Benutze die Methode von den Fotos.\n' +
+      'Antworte NUR mit JSON: {"titel": "Thema, max. 5 Wörter", "aufgaben": [ ... ], ' + this.THEMEN_JSON + '}';
   }
 };
