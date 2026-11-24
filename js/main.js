@@ -2,7 +2,7 @@
 (function () {
   F.speech.init();
 
-  // Erster Start: den Diktat-Termin am Dienstag schon eintragen (kann im Eltern-Bereich gelöscht werden)
+  // Erster Start: den Diktat-Termin am Dienstag schon eintragen (kann unter Termine gelöscht werden)
   if (!F.state.seeded) {
     F.state.seeded = true;
     if (F.daysUntil('2026-11-24') >= 0) {

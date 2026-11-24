@@ -1,74 +1,4 @@
-/* Eltern-Bereich (mit PIN): KI-Schlüssel, Termine, Diktat-Ergebnisse, Stimme, Datensicherung */
-
-F.views.parentGate = function () {
-  var hasPin = !!F.state.settings.pin;
-  F.pinInput = F.pinInput || '';
-  var title = hasPin ? 'Eltern-PIN eingeben' : (F.pinFirst ? 'PIN noch einmal eingeben' : 'Eltern-PIN festlegen (4 Ziffern)');
-  var dots = '';
-  for (var i = 0; i < 4; i++) dots += '<span class="' + (i < F.pinInput.length ? 'on' : '') + '"></span>';
-  return F.topbar('Eltern-Bereich', { home: true }) +
-    '<div class="card center"><div style="font-size:3rem">🔒</div><h2>' + title + '</h2>' +
-    (!hasPin ? '<p class="muted small">Die PIN schützt Einstellungen und den KI-Schlüssel.</p>' : '') +
-    '<div class="pin-dots">' + dots + '</div>' +
-    '<div class="keypad">' + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(function (k) { return '<button data-action="pinKey" data-k="' + k + '">' + k + '</button>'; }).join('') +
-    '<button data-action="pinKey" data-k="del">⌫</button><button data-action="pinKey" data-k="0">0</button><span></span></div>' +
-    (hasPin ? '<button class="btn ghost small" data-action="pinForgot">PIN vergessen?</button>' : '') +
-    '</div>';
-};
-F.actions.pinKey = function (el) {
-  var k = el.getAttribute('data-k');
-  if (k === 'del') F.pinInput = F.pinInput.slice(0, -1);
-  else if (F.pinInput.length < 4) F.pinInput += k;
-  if (F.pinInput.length === 4) {
-    var s = F.state.settings;
-    var entered = F.pinInput;
-    F.pinInput = '';
-    if (s.pin) {
-      if (entered === s.pin) { F.go('parentHome', {}, { replace: true }); return; }
-      F.toast('Die PIN stimmt nicht.');
-    } else if (!F.pinFirst) {
-      F.pinFirst = entered;
-    } else {
-      if (entered === F.pinFirst) {
-        s.pin = entered; F.pinFirst = null; F.save();
-        F.toast('PIN gespeichert ✓');
-        F.go('parentHome', {}, { replace: true });
-        return;
-      }
-      F.pinFirst = null;
-      F.toast('Die beiden PINs waren verschieden. Bitte nochmal.');
-    }
-  }
-  F.render();
-};
-F.actions.pinForgot = function () {
-  var a = prompt('Zum Zurücksetzen der PIN bitte das Wort ZURÜCKSETZEN eintippen. (Alle Daten bleiben erhalten.)');
-  if (a && a.trim().toUpperCase() === 'ZURÜCKSETZEN') {
-    F.state.settings.pin = ''; F.save(); F.pinInput = ''; F.render();
-    F.toast('PIN gelöscht – bitte neue festlegen.');
-  }
-};
-
-F.views.parentHome = function () {
-  var s = F.state.settings;
-  var hasKey = F.ai.hasKey();
-  return F.topbar('Eltern-Bereich', { home: true }) +
-    '<button class="list-item" data-action="go" data-view="parentAI"><span class="li-emoji">🤖</span><span class="li-main"><span class="li-title">KI einrichten (kostenlos)</span>' +
-    '<span class="li-sub">' + (hasKey ? '✅ eingerichtet' + (s.model ? ' · ' + F.esc(s.model) : '') : '⚠️ noch nicht eingerichtet – nötig für Fotos') + '</span></span><span class="li-arrow">›</span></button>' +
-    '<button class="list-item" data-action="go" data-view="parentExams"><span class="li-emoji">📅</span><span class="li-main"><span class="li-title">Klassenarbeiten & Diktat-Termine</span>' +
-    '<span class="li-sub">' + F.nextExams().length + ' anstehend</span></span><span class="li-arrow">›</span></button>' +
-    '<button class="list-item" data-action="go" data-view="parentChecks"><span class="li-emoji">📋</span><span class="li-main"><span class="li-title">Diktat-Ergebnisse & Fehlermuster</span>' +
-    '<span class="li-sub">KI-Auswertung prüfen und korrigieren</span></span><span class="li-arrow">›</span></button>' +
-    '<button class="list-item" data-action="go" data-view="parentVoice"><span class="li-emoji">🔊</span><span class="li-main"><span class="li-title">Stimme & Vorlesen</span>' +
-    '<span class="li-sub">Stimme, Tempo, Anzeige</span></span><span class="li-arrow">›</span></button>' +
-    '<button class="list-item" data-action="go" data-view="parentData"><span class="li-emoji">💾</span><span class="li-main"><span class="li-title">Datensicherung & Sonstiges</span>' +
-    '<span class="li-sub">Schule & Klasse, Sichern, Fuchs umbenennen, PIN</span></span><span class="li-arrow">›</span></button>' +
-    '<div class="card soft mt small"><b>Lernstand:</b> ' + F.state.tore + ' Tore · ' + F.esc(F.beltFor(F.state.tore).name) + ' · ' +
-    (F.state.stats.runden || 0) + ' Runden · ' + F.state.diktate.length + ' Diktate · ' + F.state.checks.length + ' Diktat-Prüfungen · ' +
-    F.state.trainWords.length + ' offene Übungswörter</div>' +
-    '<p class="center muted small">App-Version ' + F.VERSION + '</p>' +
-    '<div class="center"><button class="btn ghost small" data-action="forceUpdate">🔄 App aktualisieren</button></div>';
-};
+/* Unterseiten von "⚙️ Mehr": KI-Schlüssel, Diktat-Ergebnisse, Stimme, Datensicherung */
 
 /* ---------------- KI ---------------- */
 F.views.parentAI = function () {
@@ -273,17 +203,11 @@ F.actions.voiceSave = function (silent) {
 
 /* ---------------- Daten ---------------- */
 F.views.parentData = function () {
-  return F.topbar('Datensicherung', { home: true }) +
+  return F.topbar('Datensicherung') +
     '<div class="card"><h2>💾 Sichern</h2><p>Alle Daten liegen nur auf diesem Tablet. Mach ab und zu eine Sicherung (z. B. in „Dateien“ oder per Mail an dich).</p>' +
     '<button class="btn gut" data-action="exportData">Sicherung herunterladen</button></div>' +
     '<div class="card"><h2>♻️ Wiederherstellen</h2><p>Eine Sicherungsdatei auswählen. Achtung: Ersetzt die aktuellen Daten.</p>' +
     '<label class="btn light file-btn">Datei auswählen<input type="file" accept=".json,application/json" id="importFile"></label></div>' +
-    '<div class="card"><h2>🦊 Fuchs</h2><label class="field"><span>Name des Fuchses</span><input type="text" id="foxRename" value="' + F.esc(F.state.profile.foxName) + '"></label>' +
-    '<label class="field"><span>Name des Kindes</span><input type="text" id="kidRename" value="' + F.esc(F.state.profile.kidName) + '"></label>' +
-    '<button class="btn" data-action="renameFox">Speichern</button></div>' +
-    '<div class="card"><h2>🏫 Schule</h2><p class="small muted">Damit die Aufgaben zu Alter, Klasse und Lehrplan passen.</p>' + F.schoolFormHtml() +
-    '<button class="btn" data-action="saveSchoolParent">Speichern</button></div>' +
-    '<div class="card"><h2>🔒 PIN</h2><button class="btn light" data-action="resetPin">PIN ändern</button></div>' +
     '<div class="card"><h2>⚠️ Alles löschen</h2><button class="btn danger" data-action="resetAll">App komplett zurücksetzen</button></div>';
 };
 F.actions.exportData = function () {
@@ -324,10 +248,6 @@ F.actions.renameFox = function () {
   F.state.profile.kidName = F.$('#kidRename').value.trim();
   F.save();
   F.toast('Gespeichert ✓');
-};
-F.actions.resetPin = function () {
-  F.state.settings.pin = ''; F.save(); F.pinInput = ''; F.pinFirst = null;
-  F.go('parentGate', {}, { replace: true });
 };
 F.actions.resetAll = function () {
   var a = prompt('Wirklich ALLES löschen (Diktate, Tore, Einstellungen)? Dann LÖSCHEN eintippen.');

@@ -41,8 +41,8 @@ F.ai = {
   httpError: function (status, body) {
     var msg = (body && body.error && body.error.message) || '';
     var e;
-    if (status === 400 && /api key/i.test(msg)) e = new Error('Der KI-Schlüssel stimmt nicht. Bitte im Eltern-Bereich prüfen (ganz kopiert, ohne Leerzeichen?).');
-    else if (status === 403) e = new Error('Der KI-Schlüssel hat keinen Zugriff. Bitte im Eltern-Bereich einen neuen Schlüssel erstellen.');
+    if (status === 400 && /api key/i.test(msg)) e = new Error('Der KI-Schlüssel stimmt nicht. Bitte unter ⚙️ Mehr → KI-Schlüssel prüfen (ganz kopiert, ohne Leerzeichen?).');
+    else if (status === 403) e = new Error('Der KI-Schlüssel hat keinen Zugriff. Bitte unter ⚙️ Mehr → KI-Schlüssel einen neuen Schlüssel eintragen.');
     else if (status === 429) e = new Error('Die kostenlose KI braucht gerade eine Pause (zu viele Anfragen oder Tageslimit erreicht). Bitte in ein paar Minuten nochmal versuchen – oder morgen.');
     else if (status >= 500) e = new Error('Die KI ist gerade überlastet. Bitte gleich nochmal versuchen.');
     else e = new Error('Die KI hat nicht geantwortet (' + status + '). ' + msg);
@@ -121,7 +121,7 @@ F.ai = {
     opts = opts || {};
     var self = this;
     var s = F.state.settings;
-    if (!this.hasKey()) return Promise.reject(new Error('Es fehlt noch der KI-Schlüssel. Bitte Mama oder Papa: Eltern-Bereich → KI einrichten.'));
+    if (!this.hasKey()) return Promise.reject(new Error('Es fehlt noch der KI-Schlüssel. Bitte Mama oder Papa: ⚙️ Mehr → KI-Schlüssel einrichten.'));
     if (navigator.onLine === false) return Promise.reject(new Error('Kein Internet – für die Foto-Auswertung braucht das Tablet WLAN.'));
 
     var tried = [];
@@ -202,7 +202,7 @@ F.ai = {
     }
   },
 
-  /* Schlüssel testen (Eltern-Bereich): probiert alle Modelle von vorn durch */
+  /* Schlüssel testen (Mehr → KI-Schlüssel): probiert alle Modelle von vorn durch */
   test: function (log) {
     F.state.settings.model = '';
     return this.generateJSON('Antworte nur mit JSON: {"ok": true, "gruss": "kurzer Gruß für ein Kind, max 6 Wörter"}', [], { fresh: true, log: log })
@@ -212,7 +212,7 @@ F.ai = {
 
 /* ---------------- Vorlagen für die KI-Aufträge ---------------- */
 F.prompts = {
-  /* Angaben zum Kind (Eltern-Bereich → Schule) */
+  /* Angaben zum Kind (Mehr → Schule) */
   alter: function () { return parseInt(F.state.profile.alter, 10) || 8; },
   land: function () { return F.state.profile.bundesland || 'Niedersachsen'; },
   kind: function () {

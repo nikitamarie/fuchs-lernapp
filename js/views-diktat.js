@@ -47,7 +47,7 @@ F.views.diktatNew = function () {
     '<div class="card"><h2>2. Text auslesen</h2>' +
     '<p>' + F.esc(F.fox()) + ' liest den Text vom Foto ab. Danach kannst du alles nochmal prüfen.</p>' +
     '<button class="btn big block" data-action="extractDiktat" ' + (imgs.length ? '' : 'disabled') + '>🦊 Text auslesen</button></div>' +
-    (!F.ai.hasKey() ? '<div class="card hinweis"><p><b>Hinweis für Eltern:</b> Für das Auslesen vom Foto muss einmal der kostenlose KI-Schlüssel eingetragen werden (Eltern-Bereich). ' +
+    (!F.ai.hasKey() ? '<div class="card hinweis"><p><b>Hinweis für Eltern:</b> Für das Auslesen vom Foto muss einmal der kostenlose KI-Schlüssel eingetragen werden (⚙️ Mehr → KI-Schlüssel). ' +
       'Ohne Schlüssel kannst du den Text auch abtippen.</p></div>' : '');
 };
 
@@ -212,7 +212,7 @@ F.actions.useOnlineVoice = function () {
   F.state.settings.ttsMode = 'online';
   F.save();
   F.speech.speak('Hallo! Jetzt lese ich mit der Online-Stimme vor.');
-  F.toast('Online-Stimme ist an (braucht WLAN). Ändern: Eltern-Bereich → Stimme.', 4500);
+  F.toast('Online-Stimme ist an (braucht WLAN). Ändern: ⚙️ Mehr → Stimme.', 4500);
 };
 
 F.actions.startDiktat = function (el) {
@@ -374,7 +374,7 @@ F.views.diktatCheck = function (p) {
     '<p>Leg dein Blatt auf den Tisch und fotografiere es von oben – schön hell und gerade. Bei mehreren Seiten: alle fotografieren.</p>' +
     F.photoPicker('check') + '</div>' +
     '<button class="btn big block fuchs" data-action="runCheck" data-id="' + d.id + '" ' + (imgs.length ? '' : 'disabled') + '>🦊 Prüfen lassen</button>' +
-    '<p class="muted small center">' + F.esc(F.fox()) + ' liest deine Schreibschrift. Manchmal irrt sich die KI – Mama oder Papa können das Ergebnis im Eltern-Bereich verbessern.</p>';
+    '<p class="muted small center">' + F.esc(F.fox()) + ' liest deine Schreibschrift. Manchmal irrt sich die KI – Mama oder Papa können das Ergebnis unter ⚙️ Mehr → Diktat-Ergebnisse verbessern.</p>';
 };
 
 F.actions.runCheck = function (el) {
@@ -485,6 +485,6 @@ F.views.diktatResult = function (p) {
     '<p class="mt"><b>Erkannt:</b></p><p class="diktat-text">' + F.esc(c.erkannt) + '</p>' +
     (d ? '<p><b>Original:</b></p><p class="diktat-text">' + F.esc(d.text || (d.woerter || []).join(', ')) + '</p>' : '') +
     (c.muster ? '<p><b>Fehlermuster:</b> ' + F.esc(c.muster) + '</p>' : '') +
-    '<p class="small muted">Hat sich die KI geirrt? Im Eltern-Bereich → „Diktat-Ergebnisse“ können einzelne Fehler gestrichen werden.</p>' +
+    '<p class="small muted">Hat sich die KI geirrt? Unter ⚙️ Mehr → „Diktat-Ergebnisse“ können einzelne Fehler gestrichen werden.</p>' +
     '</details></div>';
 };

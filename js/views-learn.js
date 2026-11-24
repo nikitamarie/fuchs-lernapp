@@ -117,7 +117,7 @@ F.views.packsHome = function (p) {
     var s = F.subject(x.fach);
     return '<button class="list-item" data-action="go" data-view="packDetail" data-params="' + F.esc(JSON.stringify({ id: x.id })) + '">' +
       '<span class="li-emoji">' + s.emoji + '</span><span class="li-main"><span class="li-title">' + F.esc(x.titel) + '</span>' +
-      '<span class="li-sub">' + s.name + (x.quelle === 'checkliste' ? ' · 📝 Checkliste' : '') + ' · ' + x.aufgaben.length + ' Aufgaben' + (x.best != null ? ' · Bestes: ' + x.best + '%' : '') + '</span></span><span class="li-arrow">›</span></button>';
+      '<span class="li-sub">' + s.name + (x.quelle === 'checkliste' ? ' · 📝 Checkliste' : '') + ' · ' + F.nAufgaben(x.aufgaben.length) + (x.best != null ? ' · Bestes: ' + x.best + '%' : '') + '</span></span><span class="li-arrow">›</span></button>';
   }).join('');
   return F.topbar('Üben mit Fotos', { home: true }) +
     F.countdownHtml() +
@@ -139,7 +139,10 @@ F.views.packNew = function (p) {
     modeChip('fotos', '📷 Fotos von Aufgaben') + modeChip('checkliste', '📝 Checkliste / Themenliste') + '</div>' +
     '<p class="small muted">' + (mode === 'fotos' ? 'Arbeitsblätter, Buch- oder Heftseiten fotografieren – ' + F.esc(F.fox()) + ' macht ähnliche Aufgaben.' :
       'Nur eine Checkliste für die Klassenarbeit (z. B. „Ich kann …“) oder eine Themenliste? ' + F.esc(F.fox()) + ' denkt sich passende Aufgaben für Klasse und Bundesland aus.') + '</p></div>' +
-    '<div class="card"><h2>1. Welches Fach?</h2>' + F.subjectChips('packFach', p.fach || 'mathe', false) + '</div>';
+    '<div class="card"><h2>1. Welches Fach?</h2>' + F.subjectChips('packFach', p.fach || 'mathe', false) +
+    '<h3 class="mt">Für welche Klassenarbeit?</h3><select id="pkExam"><option value="">– keine bestimmte –</option>' +
+    F.nextExams().map(function (e) { return '<option value="' + e.id + '" ' + (p.examId === e.id ? 'selected' : '') + '>' + F.subject(e.fach).emoji + ' ' + F.esc(e.titel) + ' (' + F.formatDate(e.datum) + ')</option>'; }).join('') +
+    '</select></div>';
   if (mode === 'fotos') {
     html += '<div class="card"><h2>2. Fotos machen</h2><p>Am besten die Seiten, die in der Klassenarbeit drankommen.</p>' + F.photoPicker('pack') + '</div>' +
       '<button class="btn big block fuchs" data-action="makePack" ' + (imgs.length ? '' : 'disabled') + '>🦊 Übung erstellen</button>';
@@ -206,6 +209,7 @@ F.actions.makePack = function () {
   if (ckMode && F.$('#scLand')) { F.readSchoolForm(); F.current.params.editSchool = false; }
   if (ckMode && !ckText && !imgs.length) { F.toast('Bitte die Checkliste fotografieren oder Themen eintippen 🙂', 4000); return; }
   if (!ckMode && !imgs.length) return;
+  if (F.$('#pkExam')) F.current.params.examId = F.$('#pkExam').value;
   F.saveCkDraft();
   document.getElementById('app').innerHTML = F.loadingHtml('Neue Übung', F.fox() + ' denkt sich Aufgaben aus …');
   var prompt = ckMode ? F.prompts.checkliste(F.subject(fach).name, ckText, imgs.length > 0) :
@@ -231,11 +235,15 @@ F.views.packDetail = function (p) {
     (x.best != null ? '<p class="muted">Dein bestes Ergebnis: ' + x.best + '%</p>' : '') +
     (x.fuer ? '<p class="small muted">Aufgaben passend für: ' + F.esc(x.fuer) + '</p>' : '') + '</div>' +
     F.checklistHtml(x) +
-    ((x.themen && x.themen.length) ? F.goBtn('packThemes', { id: x.id }, '📘 Erst erklären lassen: So geht’s', 'btn big block light') : '') +
+    ((x.themen && x.themen.length) ? F.goBtn('packThemes', { id: x.id }, '📚 Lernen & Nachlesen: So geht’s', 'btn big block light') : '') +
     '<button class="btn big block fuchs" data-action="startPack" data-id="' + x.id + '" data-mode="runde">🎯 Trainingsrunde (5 Aufgaben)</button>' +
     '<button class="btn big block" data-action="startPack" data-id="' + x.id + '" data-mode="probe">📋 Probe-Klassenarbeit (alle Aufgaben)</button>' +
     '<p class="muted small center">Bei der Probe-Klassenarbeit gibt es erst am Ende die Auswertung – wie in echt. Aber ohne Zeitdruck!</p>' +
-    '<div class="btn-row mt"><button class="btn danger small" data-action="deletePack" data-id="' + x.id + '">🗑️ Übung löschen</button></div>';
+    '<div class="card mt"><label class="field" style="margin:0"><span>Gehört zur Klassenarbeit</span><select id="pkLink" data-pack="' + x.id + '">' +
+    '<option value="">– keine –</option>' + F.state.exams.slice().sort(function (a, b) { return a.datum < b.datum ? 1 : -1; }).map(function (e) {
+      return '<option value="' + e.id + '" ' + (x.examId === e.id ? 'selected' : '') + '>' + F.subject(e.fach).emoji + ' ' + F.esc(e.titel) + ' (' + F.formatDate(e.datum) + ')</option>';
+    }).join('') + '</select></label></div>' +
+    '<div class="btn-row mt"><button class="btn danger small" data-action="deletePack" data-id="' + x.id + '">🗑️ Thema löschen</button></div>';
 };
 F.sameThema = function (a, b) {
   var n = function (t) { return String(t || '').toLowerCase().replace(/^ich kann\s+/, '').replace(/[^a-zäöüß0-9]+/g, ' ').trim(); };
@@ -346,7 +354,8 @@ F.packStat = function (a, ok) {
   var lp = F.lp;
   if (lp.counted || !a.thema) return;
   lp.counted = true;
-  var x = F.getPack(lp.packId);
+  var item = lp.list[lp.idx];
+  var x = F.getPack((item && item.src) || lp.packId);
   if (!x || x.id === 'local') return;
   x.stats = x.stats || {};
   var st = x.stats[a.thema] = x.stats[a.thema] || { ok: 0, n: 0 };
@@ -459,10 +468,19 @@ F.actions.lpNext = function () {
       titel: lp.mode === 'probe' ? 'Probe-Klassenarbeit geschafft!' : 'Runde geschafft!',
       text: lp.richtig + ' von ' + lp.list.length + ' richtig' + (lp.mode === 'probe' ? ' (' + pct + '%).' : ' beim ersten Versuch.'),
       tore: lp.richtig + (lp.mode === 'probe' ? 5 : 2) + (bonus ? bonus.tore : 0),
-      again: x.id === 'local' ? { view: 'matheLocal', params: { typ: x.localTyp } } : null,
+      again: x.id === 'local' && x.localTyp ? { view: 'matheLocal', params: { typ: x.localTyp } } : null,
       extraHtml: extra
     });
     return;
   }
   F.render();
 };
+
+document.addEventListener('change', function (ev) {
+  if (!ev.target || ev.target.id !== 'pkLink') return;
+  var x = F.getPack(ev.target.getAttribute('data-pack'));
+  if (!x) return;
+  x.examId = ev.target.value;
+  F.save();
+  F.toast(x.examId ? 'Zur Klassenarbeit hinzugefügt ✓' : 'Zuordnung entfernt');
+});

@@ -219,7 +219,7 @@ F.views.arbeitResult = function (p) {
     }).join('') + '</details>' : '');
   var pack = x.packId ? F.getPack(x.packId) : null;
   if (pack) {
-    html += '<div class="card fuchs center"><h2>🎯 Fehler-Übung</h2><p>' + pack.aufgaben.length + ' Aufgaben zu den Sachen, die noch nicht so gut geklappt haben.' +
+    html += '<div class="card fuchs center"><h2>🎯 Fehler-Übung</h2><p>' + F.nAufgaben(pack.aufgaben.length) + ' zu den Sachen, die noch nicht so gut geklappt haben.' +
       (x.detektiv ? ' <b>✓ Schon geschafft – du bist eine Fehler-Detektivin! 🔍</b>' : ' Schaffst du sie, bekommst du die <b>🔍 Fehler-Detektivin</b>-Auszeichnung und +15 Tore!') + '</p>' +
       '<button class="btn big block fuchs" data-action="startPack" data-id="' + pack.id + '" data-mode="runde">💪 Fehler-Übung starten</button></div>';
   }

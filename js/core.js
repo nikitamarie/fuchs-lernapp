@@ -1,7 +1,7 @@
 /* Kern: Speicher, Navigation, Hilfsfunktionen, Belohnungen.
    Bewusst einfaches JavaScript (ohne ?. und ??), damit ältere iPads mitkommen. */
 var F = window.F = {};
-F.VERSION = '10';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
+F.VERSION = '11';  /* bei jedem Update hochzählen (auch in index.html und sw.js) */
 
 /* ---------------- Speicher ---------------- */
 F.STORE_KEY = 'fuchsapp_v1';
@@ -155,7 +155,7 @@ F.render = function () {
   if (!v) { app.innerHTML = '<p>Seite nicht gefunden.</p>'; return; }
   F.afterRender = null;
   var out = v(F.current.params);
-  if (typeof out === 'string') app.innerHTML = out;
+  if (typeof out === 'string') app.innerHTML = out + (F.navFor ? F.navFor(F.current.name) : '');
   // z. B. automatisches Vorlesen – direkt im selben Antippen, sonst bleibt iOS stumm
   var after = F.afterRender;
   F.afterRender = null;
@@ -167,7 +167,9 @@ F.topbar = function (title, opts) {
   opts = opts || {};
   var back = opts.noBack ? '<span class="spacer"></span>' :
     '<button class="back-btn" data-action="back" aria-label="Zurück">‹</button>';
-  var right = opts.home !== false ? '<button class="back-btn" data-action="home" aria-label="Startseite">🏠</button>' : '<span class="spacer"></span>';
+  // 🏠 nur in Übungs-Bildschirmen – sonst gibt es unten die Navigationsleiste
+  var focus = F.current && F.isFocusView && F.isFocusView(F.current.name);
+  var right = opts.home !== false && focus ? '<button class="back-btn" data-action="home" aria-label="Startseite">🏠</button>' : '<span class="spacer"></span>';
   return '<div class="topbar">' + back + '<div class="title">' + F.esc(title) + '</div>' + right + '</div>';
 };
 
@@ -259,6 +261,7 @@ F.PAUSEN = [
 F.finishRound = function (opts) {
   var newBelt = F.addTore(opts.tore || 0);
   F.state.stats.runden = (F.state.stats.runden || 0) + 1;
+  if (F.touchStreak) F.touchStreak();
   F.save();
   F.go('roundDone', {
     titel: opts.titel || 'Runde geschafft!',
@@ -440,3 +443,6 @@ F.readSchoolForm = function () {
   p.schulform = F.$('#scForm').value;
   F.save();
 };
+
+/* "1 Aufgabe" / "3 Aufgaben" */
+F.nAufgaben = function (n) { return n + (n === 1 ? ' Aufgabe' : ' Aufgaben'); };

@@ -115,14 +115,19 @@ F.views.examDetail = function (p) {
 
   // Üben
   var newer = packs.length && e.themen.some(function (t) { return !F.themaStatus(e, t).packId; });
-  html += '<h2 class="mt">🎯 Üben</h2>' +
+  var nAuf = packs.reduce(function (n, x) { return n + x.aufgaben.length; }, 0);
+  if (nAuf) html += '<h2 class="mt">🎤 Üben für den großen Tag</h2><div class="g2">' +
+    '<button class="btn big fuchs" data-action="examPractice" data-id="' + e.id + '" data-mode="probe">📋 Probearbeit (' + Math.min(15, nAuf) + ' Aufgaben)</button>' +
+    '<button class="btn big" data-action="examPractice" data-id="' + e.id + '" data-mode="runde">⚡ Kurztest (5 Aufgaben)</button></div>' +
+    '<p class="small muted center">Aufgaben aus allen Themen dieser Arbeit gemischt – ohne Zeitdruck.</p>';
+  html += '<h2 class="mt">📚 Themen & Übungen</h2>' +
     (e.themen.length ? '<button class="btn big block fuchs" data-action="examMakePack">' +
       (packs.length ? (newer ? '🦊 Neue Übung (mit den neuen Themen)' : '🦊 Noch eine Übung zu meinen Themen') : '🦊 Übungen zu meinen Themen erstellen') + '</button>' : '') +
-    F.goBtn('packNew', { fach: e.fach, mode: 'fotos', examId: e.id }, '📷 Übung aus Fotos von Aufgaben', 'btn big block light') +
+    F.goBtn('packNew', { fach: e.fach, mode: 'fotos', examId: e.id }, '📸 Thema dafür fotografieren', 'btn big block light') +
     packs.map(function (x) {
       return '<button class="list-item" data-action="go" data-view="packDetail" data-params="' + F.esc(JSON.stringify({ id: x.id })) + '">' +
         '<span class="li-emoji">' + (x.quelle === 'fotos' ? '📷' : '📝') + '</span><span class="li-main"><span class="li-title">' + F.esc(x.titel) + '</span>' +
-        '<span class="li-sub">' + x.aufgaben.length + ' Aufgaben' + (x.best != null ? ' · Bestes: ' + x.best + '%' : '') + '</span></span><span class="li-arrow">›</span></button>';
+        '<span class="li-sub">' + F.nAufgaben(x.aufgaben.length) + (x.best != null ? ' · Bestes: ' + x.best + '%' : '') + '</span></span><span class="li-arrow">›</span></button>';
     }).join('');
 
   html += '<details class="card mt"><summary>✏️ Arbeit bearbeiten</summary>' +

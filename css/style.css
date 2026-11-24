@@ -525,3 +525,24 @@ ul.big-list li { font-size: 1.15rem; margin-bottom: 6px; }
 .confetti span { position: absolute; top: -40px; -webkit-animation: fall 2.6s ease-in forwards; animation: fall 2.6s ease-in forwards; }
 @-webkit-keyframes fall { to { -webkit-transform: translateY(110vh) rotate(260deg); opacity: 0.2; } }
 @keyframes fall { to { transform: translateY(110vh) rotate(260deg); opacity: 0.2; } }
+
+/* ---------- Navigationsleiste unten (wie LernBeat) ---------- */
+.app { padding-bottom: calc(120px + env(safe-area-inset-bottom)); }
+.nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; background: #fff;
+  box-shadow: 0 -4px 18px rgba(63,34,112,0.12); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); }
+.nav button { flex: 1; border: none; background: transparent; font: inherit; font-size: 0.8rem; font-weight: 700; color: var(--muted);
+  padding: 6px 2px; min-height: 64px; border-radius: 16px; cursor: pointer; }
+.nav button span { display: block; font-size: 1.6rem; line-height: 1.2; }
+.nav button.on { color: var(--lila-700); background: var(--lila-100); }
+.hero .pills { margin: 6px 0; }
+.pill { display: inline-block; background: rgba(255,255,255,0.2); color: #fff; border-radius: 999px; padding: 5px 12px; font-weight: 700; font-size: 0.9rem; margin: 0 6px 6px 0; }
+.hero .belt { margin: 0 6px 6px 0; }
+.xp { height: 12px; background: rgba(255,255,255,0.25); border-radius: 999px; overflow: hidden; margin: 4px 0 6px; }
+.xp i { display: block; height: 100%; background: #ffd166; border-radius: 999px; }
+.card.tip { display: block; width: 100%; border: none; text-align: left; font: inherit; color: var(--text); cursor: pointer;
+  background: var(--fuchs-hell); box-shadow: none; border-left: 8px solid var(--fuchs); }
+.card.tip b { color: #7a3a0e; font-size: 1.1rem; }
+.card.tip p { margin: 4px 0 0; }
+.g2 { display: grid; grid-template-columns: 1fr 1fr; grid-gap: 12px; margin-bottom: 12px; }
+.g2 .btn { margin: 0; width: 100%; }
+@media (max-width: 520px) { .g2 { grid-template-columns: 1fr; } }
