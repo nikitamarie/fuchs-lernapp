@@ -126,7 +126,8 @@ F.views.parentExams = function () {
     var d = F.daysUntil(e.datum);
     return '<div class="list-item" style="cursor:default"><span class="li-emoji">' + F.subject(e.fach).emoji + '</span>' +
       '<span class="li-main"><span class="li-title">' + F.esc(e.titel) + '</span><span class="li-sub">' + F.formatDate(e.datum) +
-      (d < 0 ? ' · vorbei' : d === 0 ? ' · heute' : ' · in ' + d + ' Tagen') + '</span></span>' +
+      (d < 0 ? ' · vorbei' : d === 0 ? ' · heute' : ' · in ' + d + ' Tagen') + ' · ' + (e.themen || []).length + ' Themen</span></span>' +
+      F.goBtn('examDetail', { id: e.id }, 'Öffnen', 'btn light small') +
       '<button class="btn danger small" style="margin:0" data-action="delExam" data-id="' + e.id + '">🗑️</button></div>';
   }).join('');
   return F.topbar('Termine', { home: true }) +
@@ -141,7 +142,7 @@ F.actions.addExam = function () {
   var fach = fachEl ? fachEl.getAttribute('data-val') : 'deutsch';
   var datum = F.$('#examDatum').value;
   if (!datum) { F.toast('Bitte ein Datum wählen.'); return; }
-  F.state.exams.push({ id: F.uid(), fach: fach, titel: F.$('#examTitel').value.trim() || F.subject(fach).name + '-Arbeit', datum: datum });
+  F.state.exams.push({ id: F.uid(), fach: fach, titel: F.$('#examTitel').value.trim() || F.subject(fach).name + '-Arbeit', datum: datum, themen: [], created: Date.now() });
   F.save();
   F.render();
   F.toast('Termin gespeichert 📅');

@@ -94,7 +94,15 @@ F.views.arbeitHome = function () {
       (x.punkte !== '' && x.punkte != null && x.maxPunkte ? ' · ' + F.esc(x.punkte) + ' von ' + F.esc(x.maxPunkte) + ' Punkten' : '') +
       ' · ' + (x.awards || []).map(function (g) { return F.award(g.id).e; }).join('') + '</span></span><span class="li-arrow">›</span></button>';
   }).join('');
+  var kommend = F.nextExams();
+  var vorbei = F.state.exams.filter(function (e) { return F.daysUntil(e.datum) < 0 && !(F.state.arbeiten || []).some(function (x) { return x.examId === e.id; }); })
+    .sort(function (a, b) { return a.datum < b.datum ? 1 : -1; }).slice(0, 5);
   return F.topbar('Meine Klassenarbeiten', { home: true }) +
+    '<h2>📅 Kommende Klassenarbeiten</h2>' +
+    F.examListHtml(kommend, 'Noch keine Klassenarbeit eingetragen. Weißt du schon, wann die nächste ist?') +
+    F.goBtn('examNew', {}, '+ Neue Klassenarbeit eintragen', 'btn big block') +
+    (vorbei.length ? '<h2 class="mt">⏳ Schon geschrieben – zurückbekommen?</h2>' + F.examListHtml(vorbei) : '') +
+    '<h2 class="mt">🏅 Zurückbekommen</h2>' +
     '<div class="card fuchs center"><div style="font-size:3rem">🏅</div>' +
     '<h2>Du hast eine Arbeit zurückbekommen?</h2>' +
     '<p>Mach ein Foto davon! ' + F.esc(F.fox()) + ' schaut sie sich an, sagt dir, was du schon super kannst – und du bekommst <b>Tore und Auszeichnungen</b>. Egal welche Note! ⚽</p>' +
@@ -138,7 +146,7 @@ F.actions.runArbeit = function () {
         return { aufgabe: String(f.aufgabe || ''), kindAntwort: String(f.kindAntwort || ''), richtig: String(f.richtig || ''), erklaerung: String(f.erklaerung || '') };
       }),
       vorher: prev ? { prozent: prev.prozent, titel: prev.titel } : null,
-      packId: '', awards: [], tore: 0, detektiv: false
+      packId: '', awards: [], tore: 0, detektiv: false, examId: F.current.params.examId || ''
     };
     // Tore: immer fürs Hochladen, Bonus für gute Ergebnisse und fürs Besserwerden
     var tore = 20;

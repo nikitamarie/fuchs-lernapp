@@ -38,9 +38,12 @@ F.countdownHtml = function () {
     var d = F.daysUntil(e.datum);
     var when = d === 0 ? 'heute' : d === 1 ? 'morgen' : 'in ' + d + ' Tagen';
     var subj = F.subject(e.fach);
-    return '<div class="countdown"><span class="cd-emoji">' + subj.emoji + '</span><span>' +
+    var n = (e.themen || []).length;
+    return '<button class="countdown" style="width:100%;border:none;font:inherit;text-align:left;cursor:pointer" data-action="go" data-view="examDetail" data-params="' +
+      F.esc(JSON.stringify({ id: e.id })) + '"><span class="cd-emoji">' + subj.emoji + '</span><span style="flex:1">' +
       F.esc(e.titel || subj.name) + ' ist <b>' + when + '</b> (' + F.formatDate(e.datum) + ').' +
-      (d <= 1 ? ' Du schaffst das! 💪' : ' Jeden Tag ein bisschen üben!') + '</span></div>';
+      (d <= 1 ? ' Du schaffst das! 💪' : ' Jeden Tag ein bisschen üben!') +
+      (n ? '' : ' <span style="font-weight:600">→ Themen eintragen</span>') + '</span><span class="li-arrow">›</span></button>';
   }).join('');
 };
 
@@ -72,7 +75,7 @@ F.views.home = function () {
     '<button class="tile" data-action="go" data-view="notesHome">' +
     '<span class="emoji">💡</span><span class="label">Nachlesen</span><span class="sub">Regeln & Merksätze</span></button>' +
     '<button class="tile" data-action="go" data-view="arbeitHome">' +
-    '<span class="emoji">🏅</span><span class="label">Meine Klassenarbeiten</span><span class="sub">Korrigierte Arbeit zeigen · Tore & Pokale</span></button>' +
+    '<span class="emoji">🏅</span><span class="label">Meine Klassenarbeiten</span><span class="sub">Eintragen, Themen üben, Ergebnis zeigen</span></button>' +
     '<button class="tile wide" data-action="go" data-view="trophies" style="min-height:0">' +
     '<span class="emoji">🏆</span><span class="label">Gürtel & Pokale</span><span class="sub">' + F.state.tore + ' Tore · ' + Object.keys(F.state.awards || {}).length + ' Auszeichnungen</span></button>' +
     '</div>' +

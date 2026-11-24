@@ -213,7 +213,7 @@ F.actions.makePack = function () {
   F.ai.generateJSON(prompt, imgs).then(function (j) {
     F.pendingImages.pack = [];
     F.ckDraft = '';
-    var pack = F.buildPack(j, fach, { quelle: ckMode ? 'checkliste' : 'fotos', fuer: ckMode ? F.prompts.kind() : '' });
+    var pack = F.buildPack(j, fach, { quelle: ckMode ? 'checkliste' : 'fotos', fuer: ckMode ? F.prompts.kind() : '', examId: F.current.params.examId || '' });
     if (!pack) throw new Error('Aus diesen Fotos konnten keine Aufgaben gemacht werden. Vielleicht ein anderes Foto probieren?');
     F.save();
     F.go('packDetail', { id: pack.id }, { replace: true });
@@ -238,8 +238,12 @@ F.views.packDetail = function (p) {
     '<div class="btn-row mt"><button class="btn danger small" data-action="deletePack" data-id="' + x.id + '">🗑️ Übung löschen</button></div>';
 };
 F.sameThema = function (a, b) {
-  var n = function (t) { return String(t || '').toLowerCase().replace(/[^a-zäöüß0-9]+/g, ' ').trim(); };
-  return !!a && !!b && n(a) === n(b);
+  var n = function (t) { return String(t || '').toLowerCase().replace(/^ich kann\s+/, '').replace(/[^a-zäöüß0-9]+/g, ' ').trim(); };
+  if (!a || !b) return false;
+  var x = n(a), y = n(b);
+  if (x === y) return true;
+  // "Zahlen bis 1000" passt auch zu "Ich kann Zahlen bis 1000 lesen."
+  return x.length >= 6 && y.length >= 6 && (x.indexOf(y) >= 0 || y.indexOf(x) >= 0);
 };
 F.checklistHtml = function (x) {
   if (!x.checkliste || !x.checkliste.length) return '';

@@ -327,13 +327,14 @@ F.prompts = {
   },
 
   /* Übung aus einer Checkliste / Themenliste (ohne Aufgaben-Fotos) */
-  checkliste: function (fach, text, hatFotos) {
+  checkliste: function (fach, text, hatFotos, punkte) {
     var mathe = fach === 'Mathe';
     return 'Du bist eine freundliche, erfahrene Lehrerin in ' + F.prompts.land() + ' und bereitest ein Kind (' + F.prompts.kind() + ') auf eine Klassenarbeit im Fach ' + fach + ' vor.\n' +
       'Es gibt KEINE Aufgaben-Fotos, nur eine Checkliste (Lernziele / Themen, die in der Arbeit drankommen)' +
       (hatFotos ? ' – sie ist auf den Fotos zu sehen' : '') + (text ? (hatFotos ? ', dazu diese Notizen' : '') + ':\n"""\n' + text + '\n"""' : '.') + '\n\n' +
       'Aufgaben:\n' +
-      '1. Lies die Checkliste und schreibe jeden Punkt kurz und kindgerecht in "checkliste" (so wie „Ich kann …“).\n' +
+      (punkte && punkte.length ? '1. Verwende als "checkliste" GENAU diese Punkte, wortgleich und in dieser Reihenfolge: ' + JSON.stringify(punkte) + '\n' :
+        '1. Lies die Checkliste und schreibe jeden Punkt kurz und kindgerecht in "checkliste" (so wie „Ich kann …“).\n') +
       '2. Erstelle zu JEDEM Punkt 2 bis 3 passende Übungsaufgaben (insgesamt höchstens 24), so wie sie typischerweise in einer Klassenarbeit dieser Klassenstufe in ' + F.prompts.land() +
       ' vorkommen – passend zum Kerncurriculum/Lehrplan des Bundeslandes und zum Alter (Zahlenraum, Wortschatz, Schwierigkeit). Beginne leicht, werde langsam schwerer. ' +
       'Das Kind hat Konzentrationsschwierigkeiten: kurze, klare Aufgaben.\n' +
@@ -369,6 +370,13 @@ F.prompts = {
         'Aufgabentypen für "aufgaben": "auswahl" (genau 3 Optionen, "antwort" genau wie eine Option) oder "eingabe" (kurze Antwort). ' +
         'Bei Deutsch/Rechtschreibung gern Wörter aus der Arbeit, die falsch geschrieben waren.\n') +
       'Wenn (fast) alles richtig war: "ueben" und "fehler" dürfen leer sein; erstelle dann 6 Aufgaben zum Weiter-Trainieren auf etwas schwererem Niveau.';
+  },
+
+  /* nur die Themen von einer fotografierten Checkliste ablesen */
+  themenAusFoto: function (fach) {
+    return 'Auf den Fotos ist eine Checkliste, Lernzielliste oder Themenliste für eine Klassenarbeit im Fach ' + fach + ' (Kind: ' + F.prompts.kind() + '). ' +
+      'Schreibe jeden Punkt kurz ab (max. 12 Wörter pro Punkt), ohne Nummern, ohne Smileys/Ankreuzfelder. Ignoriere Namen und Datum.\n' +
+      'Antworte NUR mit JSON: {"themen": ["…", "…"]}';
   }
 };
 
