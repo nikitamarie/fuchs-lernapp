@@ -1,9 +1,9 @@
 /* Service Worker: speichert die App für die Offline-Nutzung.
    Bei jeder neuen Version VERSION hochzählen. */
-var VERSION = 'fuchs-v16';
+var VERSION = 'fuchs-v17';
 var FILES = [
   './', 'index.html', 'css/style.css', 'manifest.webmanifest',
-  'js/core.js', 'js/speech.js', 'js/ai.js', 'js/spelling.js', 'js/content.js', 'js/mathtasks.js',
+  'js/core.js', 'js/speech.js', 'js/ai.js', 'js/spelling.js', 'js/content.js', 'js/mathtasks.js', 'js/bigpack.js',
   'js/views-home.js', 'js/views-diktat.js', 'js/views-training.js', 'js/views-learn.js',
   'js/views-mathe.js', 'js/views-parent.js', 'js/views-arbeit.js', 'js/views-exams.js', 'js/views-nav.js', 'js/main.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'

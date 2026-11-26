@@ -149,8 +149,10 @@ F.views.packNew = function (p) {
     F.nextExams().map(function (e) { return '<option value="' + e.id + '" ' + (p.examId === e.id ? 'selected' : '') + '>' + F.subject(e.fach).emoji + ' ' + F.esc(e.titel) + ' (' + F.formatDate(e.datum) + ')</option>'; }).join('') +
     '</select></div>';
   if (mode === 'fotos') {
-    html += '<div class="card"><h2>2. Fotos machen</h2><p>Am besten die Seiten, die in der Klassenarbeit drankommen.</p>' + F.photoPicker('pack') + '</div>' +
-      '<button class="btn big block fuchs" data-action="makePack" ' + (imgs.length ? '' : 'disabled') + '>🦊 Übung erstellen</button>';
+    html += '<div class="card"><h2>2. Fotos machen</h2><p>Am besten alle Seiten, die in der Klassenarbeit drankommen – auch 20 oder mehr. ' +
+      F.esc(F.fox()) + ' liest sie in Gruppen und macht daraus ein großes Übungspaket.</p>' + F.photoPicker('pack') + '</div>' +
+      F.zielHtml(p) +
+      '<button class="btn big block fuchs" data-action="makePack" ' + (imgs.length ? '' : 'disabled') + '>🦊 Übungspaket erstellen</button>';
     return html;
   }
   html += '<div class="card"><h2>2. Für wen?</h2>' +
@@ -161,8 +163,22 @@ F.views.packNew = function (p) {
     F.photoPicker('pack', 'Checkliste fotografieren') +
     '<label class="field"><span>Themen / Checkliste eintippen</span><textarea id="ckText" style="min-height:150px" ' +
     'placeholder="z. B.\nIch kann Zahlen bis 1000 lesen und schreiben.\nIch kann Zahlen am Zahlenstrahl finden.\nIch kann Plus- und Minusaufgaben bis 1000 rechnen.">' + F.esc(F.ckDraft || '') + '</textarea></label></div>' +
+    F.zielHtml(p) +
     '<button class="btn big block fuchs" data-action="makePack">🦊 Aufgaben zur Checkliste erstellen</button>';
   return html;
+};
+/* Wie viele Aufgaben sollen entstehen? */
+F.zielHtml = function (p) {
+  var ziel = p.ziel || 80;
+  return '<div class="card"><h2>Wie viele Aufgaben?</h2><div class="chips" id="pkZiel">' + [40, 80, 120].map(function (n) {
+      return '<button class="chip ' + (ziel === n ? 'on' : '') + '" data-action="pickZiel" data-n="' + n + '">' + n + ' Aufgaben</button>';
+    }).join('') + '</div>' +
+    '<p class="small muted">Mehr Aufgaben = mehr Abwechslung im Kurztest und in der Probearbeit. Später kann man jederzeit noch mehr dazu erstellen lassen. ' +
+    'Alles kostenlos. Reicht das Tageskontingent der KI einmal nicht, ist alles Fertige gespeichert und es geht am nächsten Morgen mit „Weiter erstellen“ weiter.</p></div>';
+};
+F.actions.pickZiel = function (el) {
+  F.$$('#pkZiel .chip').forEach(function (c) { c.className = 'chip' + (c === el ? ' on' : ''); });
+  F.current.params.ziel = parseInt(el.getAttribute('data-n'), 10);
 };
 F.actions.packMode = function (el) {
   F.current.params.mode = el.getAttribute('data-mode');
@@ -175,16 +191,7 @@ document.addEventListener('input', function (ev) { if (ev.target && ev.target.id
 
 /* Übung aus einer KI-Antwort bauen und speichern (auch für Fehler-Übungen nach echten Klassenarbeiten) */
 F.buildPack = function (j, fach, extra) {
-  var aufgaben = (j.aufgaben || []).map(function (a) {
-    if (!a) return null;
-    if (F.mtask.isMath(a)) return F.mtask.normalize(a);
-    if (!a.frage || a.antwort == null) return null;
-    var typ = a.typ === 'auswahl' && a.optionen && a.optionen.length >= 2 ? 'auswahl' : 'eingabe';
-    var opts = typ === 'auswahl' ? a.optionen.map(String) : [];
-    if (typ === 'auswahl' && opts.indexOf(String(a.antwort)) < 0) opts.push(String(a.antwort));
-    return { typ: typ, frage: String(a.frage), optionen: opts, antwort: String(a.antwort), hilfe: String(a.hilfe || ''),
-      erklaerung: String(a.erklaerung || ''), loesungsweg: F.mtask.steps(a), thema: String(a.thema || '') };
-  }).filter(Boolean);
+  var aufgaben = (j.aufgaben || []).map(F.normAufgabe).filter(Boolean);
   if (!aufgaben.length) return null;
   var themen = (j.themen || []).filter(function (t) { return t && t.titel && (t.schritte || t.erklaerung); }).map(function (t) {
     return { titel: String(t.titel), text: String(t.erklaerung || ''), schritte: F.mtask.steps({ schritte: t.schritte || [] }),
@@ -216,34 +223,38 @@ F.actions.makePack = function () {
   if (!ckMode && !imgs.length) return;
   if (F.$('#pkExam')) F.current.params.examId = F.$('#pkExam').value;
   F.saveCkDraft();
-  document.getElementById('app').innerHTML = F.loadingHtml('Neue Übung', F.fox() + ' denkt sich Aufgaben aus …');
-  var prompt = ckMode ? F.prompts.checkliste(F.subject(fach).name, ckText, imgs.length > 0) :
-    (fach === 'mathe' ? F.prompts.lernpaketMathe(12) : F.prompts.lernpaket(F.subject(fach).name, 12));
-  F.ai.generateJSON(prompt, imgs).then(function (j) {
-    F.pendingImages.pack = [];
-    F.ckDraft = '';
-    var pack = F.buildPack(j, fach, { quelle: ckMode ? 'checkliste' : 'fotos', fuer: ckMode ? F.prompts.kind() : '', examId: F.current.params.examId || '' });
-    if (!pack) throw new Error('Aus diesen Fotos konnten keine Aufgaben gemacht werden. Vielleicht ein anderes Foto probieren?');
-    F.save();
-    F.go('packDetail', { id: pack.id }, { replace: true });
-  }).catch(function (e) { F.showAiError(e); });
+  var zielEl = F.$('#pkZiel .chip.on');
+  var ziel = zielEl ? parseInt(zielEl.getAttribute('data-n'), 10) : 80;
+  F.ckDraft = '';
+  F.bp.create({ fach: fach, imgs: imgs.slice(), ziel: ziel, examId: F.current.params.examId || '', ckText: ckMode ? ckText : '' }).catch(function () {});
 };
 
 F.views.packDetail = function (p) {
   var x = F.getPack(p.id);
   if (!x) return F.topbar('Übung') + '<p>Nicht gefunden.</p>';
   var s = F.subject(x.fach);
-  var rounds = Math.ceil(x.aufgaben.length / 5);
+  var c = F.packCounts(x);
+  var probeN = Math.min(20, x.aufgaben.length);
+  var b = x.build;
   return F.topbar(s.name, { home: true }) +
+    F.aiErrorHtml() +
+    (b ? '<div class="card hinweis"><h3>⏸️ Das Übungspaket ist noch nicht ganz fertig</h3><p>' +
+      (x.aufgaben.length ? 'Schon ' + F.nAufgaben(x.aufgaben.length) + ' da – du kannst schon üben.' : 'Es sind noch keine Aufgaben da.') + '</p>' +
+      '<button class="btn fuchs" data-action="resumePack" data-id="' + x.id + '">🦊 Weiter erstellen</button></div>' : '') +
+    (p.neu ? '<div class="card gut center"><h2>🎉 Fertig! ' + F.nAufgaben(x.aufgaben.length) + ' zum Üben</h2></div>' : '') +
     '<div class="card center"><div style="font-size:3rem">' + s.emoji + '</div><h1>' + F.esc(x.titel) + '</h1>' +
-    '<p>' + x.aufgaben.length + ' Aufgaben · in ' + rounds + (rounds === 1 ? ' kurzen Runde' : ' kurzen Runden') + ' zu je 5</p>' +
+    '<p><b>' + F.nAufgaben(c.gesamt) + '</b> · ' + c.neu + ' noch nie geübt' + (c.fehler ? ' · ' + c.fehler + ' zum Wiederholen' : '') + '</p>' +
     (x.best != null ? '<p class="muted">Dein bestes Ergebnis: ' + x.best + '%</p>' : '') +
     (x.fuer ? '<p class="small muted">Aufgaben passend für: ' + F.esc(x.fuer) + '</p>' : '') + '</div>' +
     F.checklistHtml(x) +
     ((x.themen && x.themen.length) ? F.goBtn('packThemes', { id: x.id }, '📚 Lernen & Nachlesen: So geht’s', 'btn big block light') : '') +
-    '<button class="btn big block fuchs" data-action="startPack" data-id="' + x.id + '" data-mode="runde">🎯 Trainingsrunde (5 Aufgaben)</button>' +
-    '<button class="btn big block" data-action="startPack" data-id="' + x.id + '" data-mode="probe">📋 Probe-Klassenarbeit (alle Aufgaben)</button>' +
-    '<p class="muted small center">Bei der Probe-Klassenarbeit gibt es erst am Ende die Auswertung – wie in echt. Aber ohne Zeitdruck!</p>' +
+    (x.aufgaben.length ? '<button class="btn big block fuchs" data-action="startPack" data-id="' + x.id + '" data-mode="runde">⚡ Kurztest (5 Aufgaben)</button>' +
+      '<button class="btn big block" data-action="startPack" data-id="' + x.id + '" data-mode="probe">📋 Probe-Klassenarbeit (' + probeN + ' Aufgaben)</button>' +
+      (c.fehler ? '<button class="btn big block light" data-action="startPack" data-id="' + x.id + '" data-mode="fehler">🔁 Meine Fehler nochmal üben (' + c.fehler + ')</button>' : '') +
+      '<p class="muted small center">Es kommen zuerst Aufgaben, die du noch nie hattest oder die noch nicht geklappt haben – so wiederholt sich nichts ständig. ' +
+      'Die Probearbeit mischt alle Themen von leicht bis schwer, wie in echt – aber ohne Zeitdruck.</p>' : '') +
+    (!b ? '<div class="card"><h3>➕ Mehr Aufgaben erstellen</h3><p class="small muted">Neue Aufgaben zu denselben Themen – ohne Wiederholungen.</p><div class="btn-row">' +
+      [20, 40].map(function (n) { return '<button class="btn light" data-action="morePack" data-id="' + x.id + '" data-n="' + n + '">+ ' + n + ' Aufgaben</button>'; }).join('') + '</div></div>' : '') +
     '<div class="card mt"><label class="field" style="margin:0"><span>Gehört zur Klassenarbeit</span><select id="pkLink" data-pack="' + x.id + '">' +
     '<option value="">– keine –</option>' + F.state.exams.slice().sort(function (a, b) { return a.datum < b.datum ? 1 : -1; }).map(function (e) {
       return '<option value="' + e.id + '" ' + (x.examId === e.id ? 'selected' : '') + '>' + F.subject(e.fach).emoji + ' ' + F.esc(e.titel) + ' (' + F.formatDate(e.datum) + ')</option>';
@@ -296,7 +307,13 @@ F.actions.startPack = function (el) {
   var thema = el.getAttribute('data-thema');
   var pool = thema ? x.aufgaben.filter(function (a) { return F.sameThema(a.thema, thema); }) : x.aufgaben;
   if (!pool.length) pool = x.aufgaben;
-  var list = mode === 'probe' ? pool.slice() : F.shuffle(pool).slice(0, 5);
+  var list;
+  if (mode === 'fehler') {
+    list = F.shuffle(pool.filter(function (a) { return a.st && a.st.lastOk === false; })).slice(0, 8);
+    if (!list.length) list = F.pickTasks(pool, 5, { spread: true });
+    mode = 'runde';
+  } else if (mode === 'probe') list = F.pickTasks(pool, Math.min(20, pool.length), { spread: true, byStufe: true });
+  else list = F.pickTasks(pool, 5, { spread: !thema });
   F.lp = { packId: x.id, mode: mode, list: list.map(function (a) { return { a: a, opts: a.typ === 'auswahl' ? F.shuffle(a.optionen) : null }; }),
     idx: 0, richtig: 0, state: 'frage', hintShown: false, tries: 0, results: [], f: {}, af: null, marks: {}, satz: '' };
   F.go('packPlay', {});
@@ -357,11 +374,13 @@ F.actions.lpHint = function () { F.lp.hintShown = true; F.render(); };
 /* Ergebnis je Checklisten-Punkt merken (nur der erste Versuch zählt) */
 F.packStat = function (a, ok) {
   var lp = F.lp;
-  if (lp.counted || !a.thema) return;
+  if (lp.counted) return;
   lp.counted = true;
   var item = lp.list[lp.idx];
   var x = F.getPack((item && item.src) || lp.packId);
   if (!x || x.id === 'local') return;
+  F.taskStat(a, ok);
+  if (!a.thema) { F.save(); return; }
   x.stats = x.stats || {};
   var st = x.stats[a.thema] = x.stats[a.thema] || { ok: 0, n: 0 };
   st.n++;
@@ -466,6 +485,12 @@ F.actions.lpNext = function () {
           '<div class="correct">' + F.esc(r.antwort) + '</div>' +
           (r.erklaerung ? '<p>💡 ' + F.esc(r.erklaerung) + '</p>' : '') + (r.steps && r.steps.length ? F.mtask.stepsHtml({ loesungsweg: r.steps }) : '') + '</div>';
       }).join('') : '';
+    }
+    if (lp.mode === 'probe' && lp.list.length >= 8) {
+      extra = '<div class="card center"><h2>📋 Wenn das die echte Arbeit wäre:</h2><p style="font-size:1.4rem">ungefähr <b>Note ' + F.noteFor(pct) + '</b> (' + pct + ' %)</p>' +
+        '<p class="small muted">Nur eine Schätzung – jede Schule rechnet etwas anders. Wichtig ist: Mit jeder Übung wird es besser! 💪</p></div>' + extra;
+      var fehlerN = lp.results.filter(function (r) { return !r.ok; }).length;
+      if (fehlerN && x.id !== 'local') extra += '<button class="btn big block fuchs" data-action="startPack" data-id="' + x.id + '" data-mode="fehler">🔁 Meine Fehler jetzt nochmal üben</button>';
     }
     var bonus = F.onPackFinished ? F.onPackFinished(x, lp, pct) : null;
     if (bonus) extra = bonus.html + extra;

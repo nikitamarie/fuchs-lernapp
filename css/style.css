@@ -570,3 +570,8 @@ ul.big-list li { font-size: 1.15rem; margin-bottom: 6px; }
 .toast { bottom: calc(100px + env(safe-area-inset-bottom)); }
 
 .offscreen-file { position: absolute; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; }
+
+.bp-step { padding: 8px 0; border-bottom: 1px solid var(--lila-100); font-size: 1.05rem; }
+.bp-step:last-child { border-bottom: none; }
+.bp-step.now { font-weight: 800; color: var(--lila-800); }
+.bp-step.todo { color: var(--muted); }

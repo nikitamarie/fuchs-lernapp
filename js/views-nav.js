@@ -188,7 +188,10 @@ F.actions.examPractice = function (el) {
     (x.themen || []).forEach(function (t) { themen.push(t); });
   });
   if (!all.length) return;
-  var list = mode === 'probe' ? F.shuffle(all).slice(0, 15) : F.shuffle(all).slice(0, 5);
+  var srcOf = {};
+  all.forEach(function (i) { srcOf[i.a.id || F.taskKey(i.a)] = i.src; });
+  var picked = F.pickTasks(all.map(function (i) { return i.a; }), mode === 'probe' ? Math.min(20, all.length) : 5, { spread: true, byStufe: mode === 'probe' });
+  var list = picked.map(function (a) { return { a: a, src: srcOf[a.id || F.taskKey(a)] }; });
   F.tempPack = { id: 'local', fach: e.fach, titel: e.titel, aufgaben: all.map(function (i) { return i.a; }), themen: themen, best: null };
   F.lp = { packId: 'local', mode: mode, list: list.map(function (i) { return { a: i.a, src: i.src, opts: i.a.typ === 'auswahl' ? F.shuffle(i.a.optionen) : null }; }),
     idx: 0, richtig: 0, state: 'frage', hintShown: false, tries: 0, results: [], f: {}, af: null, marks: {}, satz: '' };

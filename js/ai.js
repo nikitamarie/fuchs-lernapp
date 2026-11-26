@@ -4,6 +4,7 @@ F.ai = {
   base: 'https://generativelanguage.googleapis.com/v1beta',
 
   hasKey: function () { return !!(F.state.settings.apiKey || '').trim(); },
+  providerName: function () { return 'Gemini (kostenlos)'; },
   key: function () { return encodeURIComponent((F.state.settings.apiKey || '').trim()); },
 
   /* Reserve-Liste, falls die Modell-Liste nicht geladen werden kann */
@@ -472,6 +473,51 @@ F.prompts = {
     return 'Auf den Fotos ist eine Checkliste, Lernzielliste oder Themenliste für eine Klassenarbeit im Fach ' + fach + ' (Kind: ' + F.prompts.kind() + '). ' +
       'Schreibe jeden Punkt kurz ab (max. 12 Wörter pro Punkt), ohne Nummern, ohne Smileys/Ankreuzfelder. Ignoriere Namen und Datum.\n' +
       'Antworte NUR mit JSON: {"themen": ["…", "…"]}';
+  },
+
+  /* ---------- Großes Übungspaket: 1) Fotos genau abschreiben ---------- */
+  materialLesen: function (fach, ersteNr, anzahl) {
+    return 'Auf den ' + anzahl + ' Fotos sind Seiten aus Mappe, Heft, Arbeitsblatt oder Schulbuch im Fach ' + fach + ' (Kind: ' + F.prompts.kind() + '). ' +
+      'Die Fotos haben die Nummern ' + ersteNr + ' bis ' + (ersteNr + anzahl - 1) + ' (in dieser Reihenfolge).\n' +
+      'Schreibe für JEDES Foto den Inhalt so vollständig und genau ab, dass eine Lehrkraft daraus später viele passende Übungsaufgaben machen kann:\n' +
+      '- Überschrift / Thema der Seite\n- Regeln, Merksätze, Tabellen, Beispiele (genau)\n' +
+      '- JEDE Aufgabe mit allen Zahlen bzw. Wörtern, und wie sie gestellt ist (z. B. Päckchen, Lückenrechnung, Zahlenstrahl, Stellenwerttafel, schriftliches Rechnen, Sachaufgabe, Lückentext, Zuordnen, Ankreuzen)\n' +
+      '- welche Rechenwege/Strategien gezeigt werden\n' +
+      'Ignoriere Namen von Personen und Bilder ohne Lerninhalt. Lösungen, die das Kind eingetragen hat, NICHT übernehmen.\n' +
+      'Antworte NUR mit JSON: {"seiten": [{"foto": Nummer, "thema": "kurzes Thema", "inhalt": "vollständige Abschrift als Text", "formate": ["Aufgabenformate dieser Seite"]}]}';
+  },
+
+  /* ---------- 2) Themenplan mit Erklärungen ---------- */
+  themenplan: function (fach, material, ziel, festeThemen) {
+    return 'Du planst die Vorbereitung eines Kindes (' + F.prompts.kind() + ') auf eine Klassenarbeit im Fach ' + fach + '.\n' +
+      'Das ist der Stoff (abgeschrieben von den Fotos bzw. die Checkliste):\n"""\n' + material + '\n"""\n\n' +
+      (festeThemen && festeThemen.length ? 'Verwende als Themen GENAU diese, wortgleich und in dieser Reihenfolge: ' + JSON.stringify(festeThemen) + '\n' :
+        'Teile den Stoff in 3 bis 8 Themen ein – so wie die Abschnitte einer echten Klassenarbeit (z. B. „Zahlen bis 1000 lesen“, „Plus und Minus im Kopf“, „Sachaufgaben“).\n') +
+      'Insgesamt sollen etwa ' + ziel + ' Übungsaufgaben entstehen. Verteile sie nach Wichtigkeit und Umfang auf die Themen ("anzahl").\n' +
+      'Erkläre jedes Thema so, dass das Kind solche Aufgaben selbst lösen kann (Vorgehen in Schritten, ein komplett vorgemachtes Beispiel; Methode wie im Material). ' +
+      'Keine reinen Begriffs-Definitionen.\n' +
+      'Antworte NUR mit JSON: {"titel": "Thema der Arbeit, max. 5 Wörter", "themen": [{"name": "…", "fotos": [Nummern der Fotos, die dazu gehören], ' +
+      '"formate": ["Aufgabenformate, die im Material vorkommen"], "anzahl": Zahl, "erklaerung": "1–2 kurze Sätze", "schritte": ["…"], "beispiel": "…", "beispielSchritte": ["…"]}]}';
+  },
+
+  /* ---------- 3) Viele neue Aufgaben zu einem Thema ---------- */
+  themaAufgaben: function (fach, thema, material, anzahl, vorhandene) {
+    var mathe = fach === 'Mathe';
+    return 'Erstelle Übungsaufgaben zur Vorbereitung auf eine Klassenarbeit. Kind: ' + F.prompts.kind() + '. Fach: ' + fach + '.\n' +
+      'THEMA: "' + thema.name + '"' + (thema.formate && thema.formate.length ? ' – Aufgabenformate im Unterricht: ' + thema.formate.join(', ') : '') + '\n' +
+      (material ? 'Stoff aus dem Unterricht (abgeschrieben von den Fotos):\n"""\n' + material + '\n"""\n' : '') +
+      '\nErstelle GENAU ' + anzahl + ' NEUE Aufgaben zu diesem Thema:\n' +
+      '- im Stil und Niveau des Unterrichts bzw. einer echten Klassenarbeit dieser Klassenstufe in ' + F.prompts.land() + '\n' +
+      '- abwechslungsreich: verschiedene Formate, Zahlen, Wörter und Sachsituationen (Alltag eines Kindes: Handball, Kickboxen, Tiere, Schule, Einkaufen); keine zwei Aufgaben gleich oder fast gleich; nicht die Beispiele vom Blatt abschreiben\n' +
+      '- Schwierigkeit "stufe": etwa 30 % "leicht", 45 % "mittel", 25 % "schwer" (schwer = wie die kniffligsten Aufgaben einer Klassenarbeit, auch Umkehr- und Denkaufgaben)\n' +
+      '- kurz und klar formuliert (das Kind hat Konzentrationsschwierigkeiten)\n' +
+      (vorhandene && vorhandene.length ? '- Diese Aufgaben gibt es schon – NICHT wiederholen, auch nicht mit nur anderen Zahlen im gleichen Muster:\n' + vorhandene.map(function (v) { return '  • ' + v; }).join('\n') + '\n' : '') +
+      '\n' + (mathe ? F.prompts.MATHE_TYPEN() :
+        'Aufgabentypen: "auswahl" (genau 3 Antwortmöglichkeiten, eine richtig, "antwort" genau wie eine Option) oder "eingabe" (kurze Antwort: ein Wort, eine Zahl oder ein kurzer Ausdruck). ' +
+        'Bei Deutsch auch Lückensätze (Lücke als ___) mit "eingabe". Bei Englisch Wörter, Bedeutungen, einfache Sätze.\n') +
+      'Zu JEDER Aufgabe: "thema": "' + thema.name + '", "stufe", "hilfe" (Tipp ohne die Lösung), "loesungsweg" (2–5 kurze Schritte, wie man auf genau diese Lösung kommt). ' +
+      (mathe ? 'Prüfe jede Lösung zweimal nach!' : 'Prüfe jede Lösung genau.') + '\n' +
+      'Antworte NUR mit JSON: {"aufgaben": [ ... ]}';
   }
 };
 

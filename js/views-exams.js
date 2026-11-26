@@ -129,7 +129,7 @@ F.views.examDetail = function (p) {
   var newer = packs.length && e.themen.some(function (t) { return !F.themaStatus(e, t).packId; });
   var nAuf = packs.reduce(function (n, x) { return n + x.aufgaben.length; }, 0);
   if (nAuf) html += '<h2 class="mt">🎤 Üben für den großen Tag</h2><div class="g2">' +
-    '<button class="btn big fuchs" data-action="examPractice" data-id="' + e.id + '" data-mode="probe">📋 Probearbeit (' + Math.min(15, nAuf) + ' Aufgaben)</button>' +
+    '<button class="btn big fuchs" data-action="examPractice" data-id="' + e.id + '" data-mode="probe">📋 Probearbeit (' + Math.min(20, nAuf) + ' Aufgaben)</button>' +
     '<button class="btn big" data-action="examPractice" data-id="' + e.id + '" data-mode="runde">⚡ Kurztest (5 Aufgaben)</button></div>' +
     '<p class="small muted center">Aufgaben aus allen Themen dieser Arbeit gemischt – ohne Zeitdruck.</p>';
   html += '<h2 class="mt">📚 Themen & Übungen</h2>' +
@@ -211,12 +211,7 @@ F.actions.themenAusFoto = function () {
 F.actions.examMakePack = function () {
   var e = F.getExam(F.current.params.id);
   if (!e.themen.length) return;
-  document.getElementById('app').innerHTML = F.loadingHtml('Übung erstellen', F.fox() + ' denkt sich Aufgaben zu deinen Themen aus …');
-  F.ai.generateJSON(F.prompts.checkliste(F.subject(e.fach).name, e.themen.join('\n'), false, e.themen), []).then(function (j) {
-    j.checkliste = e.themen.slice();
-    var pack = F.buildPack(j, e.fach, { titel: 'Übung: ' + e.titel, quelle: 'checkliste', fuer: F.prompts.kind(), examId: e.id });
-    if (!pack) throw new Error('Zu diesen Themen konnte ich keine Aufgaben machen. Schreib die Themen vielleicht etwas genauer?');
-    F.save();
-    F.go('packDetail', { id: pack.id }, { replace: false });
-  }).catch(function (err) { F.showAiError(err); });
+  var ziel = Math.min(120, Math.max(30, e.themen.length * 15));
+  F.bp.create({ fach: e.fach, imgs: [], ziel: ziel, examId: e.id, ckText: 'Themen der ' + F.art(F.artOf(e)).name + ': ' + e.themen.join('; '),
+    festeThemen: e.themen.slice(), titel: 'Übung: ' + e.titel }).catch(function () {});
 };
